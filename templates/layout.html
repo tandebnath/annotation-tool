@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Annotation Tool</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/bootstrap.min.css') }}"
+    />
+    <script src="{{ url_for('static', filename='js/jquery-3.6.0.min.js') }}"></script>
+    <style>
+      @font-face {
+        font-family: "Montserrat";
+        src: url("{{ url_for("static", filename="fonts/Montserrat.ttf") }}")
+          format("truetype");
+        font-weight: normal;
+        font-style: normal;
+      }
+
+      body {
+        font-family: "Montserrat", sans-serif !important;
+      }
+
+      h1 {
+        font-size: 2rem;
+        text-align: center;
+        margin: 2rem 0;
+        font-weight: bold !important;
+        color: #333;
+      }
+
+      .navbar {
+        margin: 0;
+      }
+      .navbar-brand img {
+        margin: 0; /* Remove padding/margin around the logo */
+        padding: 0;
+        height: 3.5rem;
+        width: 7.5rem;
+      }
+      .navbar-text {
+        color: black;
+        font-weight: bold;
+        text-transform: uppercase;
+      }
+      .book-img img {
+        width: 10rem;
+        height: 12rem;
+        fill: red;
+      }
+      .btn-custom {
+        background-color: #d3d3d3;
+        color: black;
+        border: none;
+        text-transform: uppercase;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: all 0.15s ease-in-out;
+      }
+      .btn-custom:hover {
+        background-color: #c0c0c0;
+        transform: scale(1.05);
+      }
+    </style>
+  </head>
+  <body>
+    {% if settings.values() and all(settings.values()) %}
+    <nav class="navbar navbar-light bg-light justify-content-between">
+      <a class="navbar-brand">
+        <img
+          src="{{ url_for('static', filename='logo.png') }}"
+          class="d-inline-block align-top"
+          alt="Logo"
+        />
+      </a>
+      {% if request.endpoint != 'configure' %}
+      <form class="form-inline">
+        <a href="{{ url_for('configure') }}" class="btn btn-custom my-2 my-sm-0"
+          >Settings</a
+        >
+      </form>
+      {% endif %}
+    </nav>
+    {% endif %}
+    <div class="container">{% block content %}{% endblock %}</div>
+  </body>
+</html>

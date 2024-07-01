@@ -1,0 +1,99 @@
+{% extends "layout.html" %} {% block content %}
+<h1>Settings</h1>
+<style>
+  .btn-div {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .btn-primary {
+    background-color: #c1e1c1; /* Custom color */
+    width: 30%;
+    font-size: 0.875rem;
+    border: 0;
+    color: black;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  .btn-primary:hover {
+    transform: scale(1.05);
+    background-color: #b7d7b7;
+    color: black;
+  }
+
+  .btn-primary:active {
+    transform: scale(1.05) !important;
+    background-color: #b7d7b7 !important;
+    color: black !important;
+  }
+
+  .form-label {
+    font-size: 0.875rem;
+  }
+</style>
+<div class="container mb-4">
+  <form method="post" class="d-flex flex-column">
+    <div class="form-group">
+      <label for="books_dir" class="form-label">Name of Books Directory</label>
+      <input
+        type="text"
+        class="form-control"
+        id="books_dir"
+        name="books_dir"
+        value="{{ settings['books_dir'] }}"
+      />
+    </div>
+    <div class="form-group">
+      <label for="annotations_csv" class="form-label"
+        >Name of Annotations CSV</label
+      >
+      <input
+        type="text"
+        class="form-control"
+        id="annotations_csv"
+        name="annotations_csv"
+        value="{{ settings['annotations_csv'] }}"
+      />
+    </div>
+    <div class="form-group">
+      <label for="files_per_page" class="form-label"
+        >Number of Files to Display per Page</label
+      >
+      <input
+        type="number"
+        class="form-control"
+        id="files_per_page"
+        name="files_per_page"
+        value="{{ settings['files_per_page'] }}"
+      />
+    </div>
+    <div class="form-group">
+      <label for="states" class="form-label">States (comma-separated)</label>
+      <input
+        type="text"
+        class="form-control"
+        id="states"
+        name="states"
+        value="{{ settings['states'] }}"
+      />
+    </div>
+    <div class="form-group">
+      <label for="metadata_csv" class="form-label"
+        >Path to Metadata CSV (Optional)</label
+      >
+      <input
+        type="text"
+        class="form-control"
+        id="metadata_csv"
+        name="metadata_csv"
+        value="{{ settings['metadata_csv'] }}"
+      />
+    </div>
+    <div class="btn-div">
+      <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,200 @@
+{% extends "layout.html" %} {% block content %}
+<!-- <h1>List of Books</h1> -->
+<style>
+  .book-list {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    justify-content: center;
+    margin-top: 2rem;
+  }
+
+  .book-container {
+    width: 10rem;
+    height: 12.5rem;
+    margin: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    perspective: 25rem;
+    cursor: pointer !important;
+  }
+
+  .book {
+    transform: rotateY(-30deg);
+    position: relative;
+    transform-style: preserve-3d;
+    width: 10rem;
+    height: 12.5rem;
+    transition: transform 1s ease;
+    animation: 1s ease 0s 1 initAnimation;
+  }
+
+  .book:hover {
+    transform: rotate(0deg);
+  }
+
+  @keyframes initAnimation {
+    0% {
+      transform: rotateY(0deg);
+    }
+    100% {
+      transform: rotateY(-30deg);
+    }
+  }
+
+  .book > :first-child {
+    position: absolute;
+    width: 10rem;
+    height: 12.5rem;
+    border-top-right-radius: 0.1875rem;
+    border-bottom-right-radius: 0.1875rem;
+    box-shadow: 0.3125rem 0.3125rem 1.25rem lightgray;
+  }
+
+  .book::before {
+    content: " ";
+    background: #fff;
+    height: calc(12.5rem - 2 * 0.1875rem);
+    width: 2.5rem;
+    top: 0.1875rem;
+    position: absolute;
+    transform: translateX(calc(10rem - 2.5rem / 2 - 0.1875rem)) rotateY(90deg)
+      translateX(calc(2.5rem / 2));
+  }
+
+  .book::after {
+    content: " ";
+    position: absolute;
+    left: 0;
+    width: 10rem;
+    height: 12.5rem;
+    border-top-right-radius: 0.1875rem;
+    border-bottom-right-radius: 0.1875rem;
+    background: #fcf5e5;
+    transform: translateZ(-2.5rem);
+    box-shadow: -0.625rem 0 3.125rem 0.625rem lightgray;
+  }
+
+  .book-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    z-index: 1;
+    padding: 1.25rem;
+    text-align: center;
+  }
+
+  .book-id {
+    font-size: 0.675rem;
+    color: black;
+    margin-bottom: 1rem;
+  }
+
+  .book-title {
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: black;
+  }
+
+  .book-by {
+    font-size: 0.675rem;
+    color: black;
+    margin: 0.375rem 0;
+  }
+
+  .book-completion {
+    font-size: 0.5625rem;
+    color: black;
+    font-style: italic;
+    margin-top: 1rem;
+  }
+</style>
+
+<div class="book-list">
+  {% for book in books %}
+  <a href="{{ url_for('book', book_id=book) }}" class="book-link">
+    <div class="book-container">
+      <div class="book">
+        <div
+          style="background: linear-gradient(to top, #AFE1AF {{book_completion[book]}}%, #FCF5E5 0)"
+        ></div>
+        <div class="book-overlay">
+          <div class="book-id">{{ book }}</div>
+          {% if book in book_metadata %}
+          <div class="book-title">{{ book_metadata[book].title[:30] }}..</div>
+          <div class="book-by">by</div>
+          <div class="book-title">{{ book_metadata[book].author }}</div>
+          {% endif %}
+          <div class="book-completion">
+            {{ book_completion[book] }}% completed
+          </div>
+        </div>
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+
+<!-- Pagination Controls -->
+<nav aria-label="Page navigation" style="margin-top: 4rem; margin-bottom: 2rem">
+  <ul class="pagination justify-content-center" style="font-size: 0.875rem">
+    {% if page > 1 %}
+    <li class="page-item">
+      <a
+        class="page-link"
+        href="{{ url_for('index', page=page-1) }}"
+        aria-label="Previous"
+        style="background-color: white; color: #0f52ba"
+      >
+        <span aria-hidden="true">&laquo;</span>
+        <span class="sr-only">Previous</span>
+      </a>
+    </li>
+    {% else %}
+    <li class="page-item disabled">
+      <a class="page-link" aria-label="Previous">
+        <span aria-hidden="true">&laquo;</span>
+        <span class="sr-only">Previous</span>
+      </a>
+    </li>
+    {% endif %} {% for p in range(1, total_pages + 1) %}
+    <li class="page-item {% if p == page %}active{% endif %}">
+      <a
+        class="page-link"
+        href="{{ url_for('index', page=p) }}"
+        style="color: black; {% if p == page %}border-color:#0F52BA; background-color:#0F52BA; color: white{% endif %} {% if p != page %}color: #0F52BA{% endif %}"
+        >{{ p }}</a
+      >
+    </li>
+    {% endfor %} {% if page < total_pages %}
+    <li class="page-item">
+      <a
+        class="page-link"
+        href="{{ url_for('index', page=page+1) }}"
+        aria-label="Next"
+        style="background-color: white; color: #0f52ba"
+      >
+        <span aria-hidden="true">&raquo;</span>
+        <span class="sr-only">Next</span>
+      </a>
+    </li>
+    {% else %}
+    <li class="page-item disabled">
+      <a class="page-link" aria-label="Next">
+        <span aria-hidden="true">&raquo;</span>
+        <span class="sr-only">Next</span>
+      </a>
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endblock %}

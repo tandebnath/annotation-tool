@@ -2,11 +2,14 @@ from flask import Flask, render_template, request, redirect, url_for
 import os
 import json
 import pandas as pd
+import logging
 
 app = Flask(__name__)
 
 SETTINGS_FILE = "settings.json"
 
+# Set up logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Load settings
 def load_settings():
@@ -21,12 +24,10 @@ def load_settings():
         "metadata_csv": "",
     }
 
-
 # Save settings
 def save_settings(settings):
     with open(SETTINGS_FILE, "w") as f:
         json.dump(settings, f)
-
 
 settings = load_settings()
 
@@ -36,22 +37,27 @@ if os.path.exists(settings["annotations_csv"]):
 else:
     annotations_df = pd.DataFrame(columns=["ID", "Page", "State"])
 
-
 # Save annotations
 def save_annotations():
     annotations_df.to_csv(settings["annotations_csv"], index=False)
 
-
 # Load metadata if provided
 metadata_df = pd.DataFrame()
-if settings.get("metadata_csv") and os.path.exists(settings["metadata_csv"]):
-    metadata_df = pd.read_csv(settings["metadata_csv"])
-
+if settings.get("metadata_csv"):
+    metadata_csv_path = settings["metadata_csv"]
+    logging.debug(f"Trying to read metadata from {metadata_csv_path}")
+    if os.path.exists(metadata_csv_path):
+        try:
+            metadata_df = pd.read_csv(metadata_csv_path)
+            logging.info(f"Metadata successfully loaded from {metadata_csv_path}")
+        except Exception as e:
+            logging.error(f"Error reading metadata CSV: {e}")
+    else:
+        logging.warning(f"Metadata CSV not found at {metadata_csv_path}")
 
 @app.context_processor
 def utility_processor():
     return dict(all=all, settings=settings, int=int, max=max, min=min)
-
 
 @app.route("/settings", methods=["GET", "POST"])
 def configure():
@@ -66,14 +72,13 @@ def configure():
 
     return render_template("settings.html", settings=settings)
 
-
 @app.route("/")
 def index():
     if not all(settings.values()):
         return redirect(url_for("configure"))
 
     books = os.listdir(settings["books_dir"])
-    books_per_page = 5  # Number of books per page
+    books_per_page = settings["files_per_page"]  # Number of books per page
     page = request.args.get("page", 1, type=int)
     start_index = (page - 1) * books_per_page
     end_index = start_index + books_per_page
@@ -112,7 +117,6 @@ def index():
         page=page,
         total_pages=total_pages,
     )
-
 
 @app.route("/book/<book_id>", methods=["GET", "POST"])
 def book(book_id):
@@ -193,11 +197,9 @@ def book(book_id):
         page=page,
     )
 
-
 @app.route("/annotations", methods=["GET"])
 def get_annotations():
     return annotations_df.to_csv(index=False)
-
 
 if __name__ == "__main__":
     app.run(debug=True)

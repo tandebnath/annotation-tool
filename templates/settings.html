@@ -58,6 +58,18 @@
       />
     </div>
     <div class="form-group">
+      <label for="books_per_page" class="form-label"
+        >Number of Books to Display per Page</label
+      >
+      <input
+        type="number"
+        class="form-control"
+        id="books_per_page"
+        name="books_per_page"
+        value="{{ settings['books_per_page'] }}"
+      />
+    </div>
+    <div class="form-group">
       <label for="files_per_page" class="form-label"
         >Number of Files to Display per Page</label
       >
@@ -80,9 +92,7 @@
       />
     </div>
     <div class="form-group">
-      <label for="metadata_csv" class="form-label"
-        >Path to Metadata CSV (Optional)</label
-      >
+      <label for="metadata_csv" class="form-label">Path to Metadata CSV</label>
       <input
         type="text"
         class="form-control"

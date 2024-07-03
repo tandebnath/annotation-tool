@@ -9,27 +9,60 @@ app = Flask(__name__)
 SETTINGS_FILE = "settings.json"
 
 # Set up logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
 
 # Load settings
 def load_settings():
-    if os.path.exists(SETTINGS_FILE):
-        with open(SETTINGS_FILE, "r") as f:
-            return json.load(f)
-    return {
+    default_settings = {
         "books_dir": "",
         "annotations_csv": "annotations.csv",
+        "books_per_page": 5,
         "files_per_page": 5,
         "states": "Front, Core, Back, Unknown",
         "metadata_csv": "",
     }
+
+    if os.path.exists(SETTINGS_FILE):
+        with open(SETTINGS_FILE, "r") as f:
+            loaded_settings = json.load(f)
+            for key in default_settings:
+                if key not in loaded_settings:
+                    loaded_settings[key] = default_settings[key]
+            return loaded_settings
+
+    return default_settings
+
 
 # Save settings
 def save_settings(settings):
     with open(SETTINGS_FILE, "w") as f:
         json.dump(settings, f)
 
+
 settings = load_settings()
+
+# Check if required settings are present
+required_keys = [
+    "books_dir",
+    "annotations_csv",
+    "books_per_page",
+    "files_per_page",
+    "states",
+]
+
+
+@app.before_request
+def check_settings():
+    if (
+        not all(settings.get(key) for key in required_keys)
+        and request.endpoint != "configure"
+        and not request.path.startswith("/static/")
+    ):
+        return redirect(url_for("configure"))
+
 
 # Load existing annotations
 if os.path.exists(settings["annotations_csv"]):
@@ -37,48 +70,60 @@ if os.path.exists(settings["annotations_csv"]):
 else:
     annotations_df = pd.DataFrame(columns=["ID", "Page", "State"])
 
+
 # Save annotations
 def save_annotations():
     annotations_df.to_csv(settings["annotations_csv"], index=False)
 
+
 # Load metadata if provided
 metadata_df = pd.DataFrame()
-if settings.get("metadata_csv"):
-    metadata_csv_path = settings["metadata_csv"]
-    logging.debug(f"Trying to read metadata from {metadata_csv_path}")
-    if os.path.exists(metadata_csv_path):
-        try:
-            metadata_df = pd.read_csv(metadata_csv_path)
-            logging.info(f"Metadata successfully loaded from {metadata_csv_path}")
-        except Exception as e:
-            logging.error(f"Error reading metadata CSV: {e}")
-    else:
-        logging.warning(f"Metadata CSV not found at {metadata_csv_path}")
+
+
+def load_metadata():
+    global metadata_df
+    metadata_df = pd.DataFrame()
+    metadata_csv_path = settings.get("metadata_csv")
+    if metadata_csv_path:
+        logging.debug(f"Trying to read metadata from {metadata_csv_path}")
+        if os.path.exists(metadata_csv_path):
+            try:
+                metadata_df = pd.read_csv(metadata_csv_path)
+                logging.info(f"Metadata successfully loaded from {metadata_csv_path}")
+            except Exception as e:
+                logging.error(f"Error reading metadata CSV: {e}")
+        else:
+            logging.warning(f"Metadata CSV not found at {metadata_csv_path}")
+
 
 @app.context_processor
 def utility_processor():
     return dict(all=all, settings=settings, int=int, max=max, min=min)
+
 
 @app.route("/settings", methods=["GET", "POST"])
 def configure():
     if request.method == "POST":
         settings["books_dir"] = request.form["books_dir"]
         settings["annotations_csv"] = request.form["annotations_csv"]
+        settings["books_per_page"] = int(request.form["books_per_page"])
         settings["files_per_page"] = int(request.form["files_per_page"])
         settings["states"] = request.form["states"]
         settings["metadata_csv"] = request.form["metadata_csv"]
         save_settings(settings)
+        load_metadata()  # Load metadata after saving settings
         return redirect(url_for("index"))
 
     return render_template("settings.html", settings=settings)
 
+
 @app.route("/")
 def index():
-    if not all(settings.values()):
+    if not all(settings.get(key) for key in required_keys):
         return redirect(url_for("configure"))
 
     books = os.listdir(settings["books_dir"])
-    books_per_page = settings["files_per_page"]  # Number of books per page
+    books_per_page = settings["books_per_page"]  # Number of books per page
     page = request.args.get("page", 1, type=int)
     start_index = (page - 1) * books_per_page
     end_index = start_index + books_per_page
@@ -96,9 +141,13 @@ def index():
 
         # Get metadata if available
         metadata = None
-        if not metadata_df.empty and "htid" in metadata_df.columns:
-            metadata = metadata_df[metadata_df["htid"] == book]
-            if not metadata.empty:
+        if not metadata_df.empty:
+            if "htid" in metadata_df.columns:
+                metadata = metadata_df[metadata_df["htid"] == book]
+            elif "htid_old" in metadata_df.columns:
+                metadata = metadata_df[metadata_df["htid_old"] == book]
+
+            if metadata is not None and not metadata.empty:
                 book_metadata[book] = {
                     "title": metadata["title"].values[0][:10],
                     "author": metadata["author"].values[0],
@@ -117,6 +166,7 @@ def index():
         page=page,
         total_pages=total_pages,
     )
+
 
 @app.route("/book/<book_id>", methods=["GET", "POST"])
 def book(book_id):
@@ -171,13 +221,27 @@ def book(book_id):
 
     # Get metadata if available
     metadata = None
-    if not metadata_df.empty and "htid" in metadata_df.columns:
-        book_metadata = metadata_df[metadata_df["htid"] == book_id]
-        if not book_metadata.empty:
+    if not metadata_df.empty:
+        book_metadata = None
+        if "htid" in metadata_df.columns:
+            book_metadata = metadata_df[metadata_df["htid"] == book_id]
+        elif "htid_old" in metadata_df.columns:
+            book_metadata = metadata_df[metadata_df["htid_old"] == book_id]
+
+        if book_metadata is not None and not book_metadata.empty:
+            rights_date = book_metadata["rights_date_used"].values[0]
+            if pd.isna(rights_date):
+                rights_date = ""
+            else:
+                rights_date = (
+                    str(int(rights_date))
+                    if rights_date.is_integer()
+                    else str(rights_date)
+                )
             metadata = {
                 "title": book_metadata["title"].values[0],
                 "author": book_metadata["author"].values[0],
-                "rights_date_used": book_metadata["rights_date_used"].values[0],
+                "rights_date_used": rights_date,
             }
 
     annotated_pages = annotations_df[annotations_df["ID"] == book_id].shape[0]
@@ -197,9 +261,11 @@ def book(book_id):
         page=page,
     )
 
+
 @app.route("/annotations", methods=["GET"])
 def get_annotations():
     return annotations_df.to_csv(index=False)
+
 
 if __name__ == "__main__":
     app.run(debug=True)

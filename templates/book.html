@@ -1,4 +1,16 @@
 {% extends "layout.html" %} {% block content %}
+<style>
+  .mark-all-as-btn {
+    background-color:#D70040;
+    border-color:#D70040;
+    color: white; /* Adjust this if you need a different text color */
+  }
+  .mark-all-as-btn:hover {
+    transform: scale(1.05);
+    color: white;
+  }
+</style>
+
 <a href="{{ url_for('index') }}" class="btn btn-secondary btn-sm mb-3 mt-3"
   >Back to Books</a
 >
@@ -25,13 +37,13 @@
   </div>
 </div>
 
-<div class="mb-3 text-end">
+<div class="mb-3 d-flex justify-content-end">
   <form method="post">
     <button
       type="submit"
       name="mark_as_state"
       value="{{ mark_as_state }}"
-      class="btn btn-primary"
+      class="btn mark-all-as-btn"
     >
       Mark all as {{ mark_as_state }}
     </button>

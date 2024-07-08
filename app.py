@@ -21,8 +21,9 @@ def load_settings():
         "annotations_csv": "annotations.csv",
         "books_per_page": 5,
         "files_per_page": 5,
-        "states": "Front, Core, Back, Unknown",
+        "states": "Front,Core,Back,Unknown",
         "metadata_csv": "",
+        "mark_as_state": "Unknown",
     }
 
     if os.path.exists(SETTINGS_FILE):
@@ -51,6 +52,7 @@ required_keys = [
     "books_per_page",
     "files_per_page",
     "states",
+    "mark_as_state",
 ]
 
 
@@ -170,37 +172,73 @@ def index():
 
 @app.route("/book/<book_id>", methods=["GET", "POST"])
 def book(book_id):
+    global annotations_df
+
     if request.method == "POST":
-        page = request.form["page"]
-        state = request.form["state"]
+        if "mark_as_state" in request.form:
+            mark_as_state = request.form["mark_as_state"]
+            book_path = os.path.join(settings["books_dir"], book_id)
+            pages = sorted(os.listdir(book_path))
 
-        # Remove any existing annotation for this page
-        global annotations_df
-        annotations_df = annotations_df[
-            (annotations_df["ID"] != book_id) | (annotations_df["Page"] != page)
-        ]
+            for page_file in pages:
+                page = page_file  # Keep the .txt extension
+                if annotations_df[
+                    (annotations_df["ID"] == book_id) & (annotations_df["Page"] == page)
+                ].empty:
+                    new_annotation = pd.DataFrame(
+                        {"ID": [book_id], "Page": [page], "State": [mark_as_state]}
+                    )
+                    annotations_df = pd.concat(
+                        [annotations_df, new_annotation], ignore_index=True
+                    )
 
-        # Add the new annotation
-        new_annotation = pd.DataFrame(
-            {"ID": [book_id], "Page": [page], "State": [state]}
-        )
-        annotations_df = pd.concat([annotations_df, new_annotation], ignore_index=True)
+            save_annotations()
+            logging.debug(
+                f"Marked all unannotated pages as {mark_as_state} for book {book_id}"
+            )
+            return redirect(
+                url_for("book", book_id=book_id, page=request.args.get("page", 1))
+            )
 
-        # Save annotations
-        save_annotations()
+        else:
+            page = request.form["page"]
+            state = request.form["state"]
 
-        return redirect(
-            url_for("book", book_id=book_id, page=request.args.get("page", 0))
-        )
+            # Check if the current state is the same as the clicked button to remove the annotation
+            if annotations_df[
+                (annotations_df["ID"] == book_id)
+                & (annotations_df["Page"] == page)
+                & (annotations_df["State"] == state)
+            ].empty:
+                # Add the new annotation
+                new_annotation = pd.DataFrame(
+                    {"ID": [book_id], "Page": [page], "State": [state]}
+                )
+                annotations_df = pd.concat(
+                    [annotations_df, new_annotation], ignore_index=True
+                )
+            else:
+                # Remove the existing annotation
+                annotations_df = annotations_df[
+                    (annotations_df["ID"] != book_id)
+                    | (annotations_df["Page"] != page)
+                    | (annotations_df["State"] != state)
+                ]
+
+            save_annotations()
+            logging.debug(
+                f"Toggled annotation for page {page} as {state} for book {book_id}"
+            )
+            return redirect(
+                url_for("book", book_id=book_id, page=request.args.get("page", 1))
+            )
 
     page = int(request.args.get("page", 1))
     book_path = os.path.join(settings["books_dir"], book_id)
     pages = sorted(os.listdir(book_path))
     total_files_per_page = settings["files_per_page"]
-    total_pages = (
-        len(pages) + total_files_per_page - 1
-    ) // total_files_per_page  # Calculate total pages
-    start_index = page * total_files_per_page
+    total_pages = (len(pages) + total_files_per_page - 1) // total_files_per_page
+    start_index = (page - 1) * total_files_per_page
     end_index = start_index + total_files_per_page
     pages_to_display = pages[start_index:end_index]
 
@@ -209,17 +247,22 @@ def book(book_id):
         with open(os.path.join(book_path, page_file), "r", encoding="utf-8") as file:
             content.append((page_file, file.read()))
 
-    next_page = page + 1 if (page + 1) < total_pages else None
-    prev_page = page - 1 if page > 0 else None
+    next_page = page + 1 if (page + 1) <= total_pages else None
+    prev_page = page - 1 if page > 1 else None
+
+    logging.debug(f"Displaying pages: {pages_to_display}")
 
     annotations_dict = (
         annotations_df[annotations_df["ID"] == book_id]
         .set_index("Page")
         .to_dict()["State"]
     )
-    states = settings["states"].split(",")
 
-    # Get metadata if available
+    logging.debug(f"Annotations for book {book_id}: {annotations_dict}")
+
+    # Split the states string by comma
+    states = [state.strip() for state in settings["states"].split(",")]
+
     metadata = None
     if not metadata_df.empty:
         book_metadata = None
@@ -259,6 +302,7 @@ def book(book_id):
         book_completion=round(book_completion, 2),
         total_pages=total_pages,
         page=page,
+        mark_as_state=settings["mark_as_state"],
     )
 
 

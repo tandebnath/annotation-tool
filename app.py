@@ -112,6 +112,7 @@ def configure():
         settings["files_per_page"] = int(request.form["files_per_page"])
         settings["states"] = request.form["states"]
         settings["metadata_csv"] = request.form["metadata_csv"]
+        settings["mark_as_state"] = request.form["mark_as_state"]
         save_settings(settings)
         load_metadata()  # Load metadata after saving settings
         return redirect(url_for("index"))

@@ -1,4 +1,16 @@
 {% extends "layout.html" %} {% block content %}
+<style>
+  .mark-all-as-btn {
+    background-color: #d70040;
+    border-color: #d70040;
+    color: white; /* Adjust this if you need a different text color */
+  }
+  .mark-all-as-btn:hover {
+    transform: scale(1.05);
+    color: white;
+  }
+</style>
+
 <a href="{{ url_for('index') }}" class="btn btn-secondary btn-sm mb-3 mt-3"
   >Back to Books</a
 >
@@ -23,6 +35,19 @@
   >
     {{ book_completion }}%
   </div>
+</div>
+
+<div class="mb-3 d-flex justify-content-end">
+  <form method="post">
+    <button
+      type="submit"
+      name="mark_as_state"
+      value="{{ mark_as_state }}"
+      class="btn mark-all-as-btn"
+    >
+      Mark all as {{ mark_as_state }}
+    </button>
+  </form>
 </div>
 
 {% for page, text in content %}
@@ -119,6 +144,28 @@
     </li>
     {% endif %}
   </ul>
+  <form
+    method="GET"
+    action="{{ url_for('book', book_id=book_id) }}"
+    class="d-flex justify-content-center mt-3"
+  >
+    <input
+      type="number"
+      name="page"
+      min="1"
+      max="{{ total_pages }}"
+      class="form-control"
+      placeholder="Go to page"
+      style="width: 10rem; margin-right: 1rem"
+    />
+    <button
+      type="submit"
+      class="btn btn-primary"
+      style="background-color: #0f52ba; color: white"
+    >
+      Go
+    </button>
+  </form>
 </nav>
 
 <script>

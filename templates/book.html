@@ -1,11 +1,30 @@
 {% extends "layout.html" %} {% block content %}
 <style>
   .mark-all-as-btn {
-    background-color: #d70040;
-    border-color: #d70040;
+    background-color: #0096ff;
+    border-color: #0096ff;
     color: white; /* Adjust this if you need a different text color */
   }
   .mark-all-as-btn:hover {
+    transform: scale(1.05);
+    color: white;
+  }
+  .save-btn {
+    background-color: #0096ff;
+    border-color: #0096ff;
+    color: white;
+    margin-right: 1rem;
+  }
+  .save-btn:hover {
+    transform: scale(1.05);
+    color: white;
+  }
+  .clear-btn {
+    background-color: #d70040;
+    border-color: #d70040;
+    color: white;
+  }
+  .clear-btn:hover {
     transform: scale(1.05);
     color: white;
   }
@@ -37,7 +56,46 @@
   </div>
 </div>
 
-<div class="mb-3 d-flex justify-content-end">
+<div>
+  <form method="POST">
+    <div class="form-group">
+      <label for="volume_notes" class="form-label"
+        >Enter Notes about the Volume</label
+      >
+      <textarea
+        class="form-control"
+        id="volume_notes"
+        name="volume_notes"
+        rows="3"
+      >
+{{ volume_notes }}</textarea
+      >
+    </div>
+    <div class="d-flex justify-content-end mb-1">
+      <button
+        type="submit"
+        name="action"
+        value="save"
+        class="btn btn-sm save-btn"
+      >
+        Save
+      </button>
+      <button
+        type="submit"
+        id="clear-button"
+        name="action"
+        value="clear"
+        class="btn btn-sm clear-btn"
+      >
+        Clear
+      </button>
+    </div>
+  </form>
+</div>
+
+<hr class="mt-2 mb-3" />
+
+<div class="mb-3 d-flex justify-content-center">
   <form method="post">
     <button
       type="submit"
@@ -195,6 +253,12 @@
       });
     });
   });
+  document
+    .getElementById("clear-button")
+    .addEventListener("click", function () {
+      document.getElementById("volume_notes").value = "";
+      document.forms[0].submit();
+    });
 </script>
 
 {% endblock %}

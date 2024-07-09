@@ -24,6 +24,7 @@ def load_settings():
         "states": "Front,Core,Back,Unknown",
         "metadata_csv": "",
         "mark_as_state": "Unknown",
+        "volume_notes_csv": "volume_notes.csv",
     }
 
     if os.path.exists(SETTINGS_FILE):
@@ -53,6 +54,7 @@ required_keys = [
     "files_per_page",
     "states",
     "mark_as_state",
+    "volume_notes_csv",
 ]
 
 
@@ -76,6 +78,16 @@ else:
 # Save annotations
 def save_annotations():
     annotations_df.to_csv(settings["annotations_csv"], index=False)
+
+
+def load_volume_notes():
+    if os.path.exists(settings["volume_notes_csv"]):
+        return pd.read_csv(settings["volume_notes_csv"])
+    return pd.DataFrame(columns=["ID", "Notes"])
+
+
+def save_volume_notes(volume_notes_df):
+    volume_notes_df.to_csv(settings["volume_notes_csv"], index=False)
 
 
 # Load metadata if provided
@@ -113,6 +125,7 @@ def configure():
         settings["states"] = request.form["states"]
         settings["metadata_csv"] = request.form["metadata_csv"]
         settings["mark_as_state"] = request.form["mark_as_state"]
+        settings["volume_notes_csv"] = request.form["volume_notes_csv"]
         save_settings(settings)
         load_metadata()  # Load metadata after saving settings
         return redirect(url_for("index"))
@@ -174,6 +187,7 @@ def index():
 @app.route("/book/<book_id>", methods=["GET", "POST"])
 def book(book_id):
     global annotations_df
+    volume_notes_df = load_volume_notes()
 
     if request.method == "POST":
         if "mark_as_state" in request.form:
@@ -194,12 +208,24 @@ def book(book_id):
                     )
 
             save_annotations()
-            logging.debug(
-                f"Marked all unannotated pages as {mark_as_state} for book {book_id}"
-            )
             return redirect(
                 url_for("book", book_id=book_id, page=request.args.get("page", 1))
             )
+
+        elif "volume_notes" in request.form:
+            notes = request.form["volume_notes"]
+
+            # Remove any existing notes for this volume
+            volume_notes_df = volume_notes_df[volume_notes_df["ID"] != book_id]
+
+            # Add the new notes if not empty
+            if notes.strip():
+                new_notes = pd.DataFrame({"ID": [book_id], "Notes": [notes]})
+                volume_notes_df = pd.concat(
+                    [volume_notes_df, new_notes], ignore_index=True
+                )
+
+            save_volume_notes(volume_notes_df)
 
         else:
             page = request.form["page"]
@@ -227,9 +253,6 @@ def book(book_id):
                 ]
 
             save_annotations()
-            logging.debug(
-                f"Toggled annotation for page {page} as {state} for book {book_id}"
-            )
             return redirect(
                 url_for("book", book_id=book_id, page=request.args.get("page", 1))
             )
@@ -251,15 +274,11 @@ def book(book_id):
     next_page = page + 1 if (page + 1) <= total_pages else None
     prev_page = page - 1 if page > 1 else None
 
-    logging.debug(f"Displaying pages: {pages_to_display}")
-
     annotations_dict = (
         annotations_df[annotations_df["ID"] == book_id]
         .set_index("Page")
         .to_dict()["State"]
     )
-
-    logging.debug(f"Annotations for book {book_id}: {annotations_dict}")
 
     # Split the states string by comma
     states = [state.strip() for state in settings["states"].split(",")]
@@ -291,6 +310,13 @@ def book(book_id):
     annotated_pages = annotations_df[annotations_df["ID"] == book_id].shape[0]
     book_completion = (annotated_pages / len(pages)) * 100 if len(pages) > 0 else 0
 
+    # Get existing volume notes if available
+    volume_notes = volume_notes_df[volume_notes_df["ID"] == book_id]["Notes"]
+    if not volume_notes.empty:
+        volume_notes = volume_notes.values[0]
+    else:
+        volume_notes = ""
+
     return render_template(
         "book.html",
         book_id=book_id,
@@ -304,8 +330,8 @@ def book(book_id):
         total_pages=total_pages,
         page=page,
         mark_as_state=settings["mark_as_state"],
+        volume_notes=volume_notes,
     )
-
 
 @app.route("/annotations", methods=["GET"])
 def get_annotations():

@@ -132,13 +132,17 @@ def configure():
 
     return render_template("settings.html", settings=settings)
 
-
 @app.route("/")
 def index():
     if not all(settings.get(key) for key in required_keys):
         return redirect(url_for("configure"))
 
-    books = os.listdir(settings["books_dir"])
+    books = [
+        book for book in os.listdir(settings["books_dir"])
+        if os.path.isdir(os.path.join(settings["books_dir"], book)) and any(
+            file.endswith(".txt") for file in os.listdir(os.path.join(settings["books_dir"], book))
+        )
+    ]
     books_per_page = settings["books_per_page"]  # Number of books per page
     page = request.args.get("page", 1, type=int)
     start_index = (page - 1) * books_per_page
@@ -150,7 +154,7 @@ def index():
 
     for book in paginated_books:
         book_path = os.path.join(settings["books_dir"], book)
-        total_pages = len(os.listdir(book_path))
+        total_pages = len([file for file in os.listdir(book_path) if file.endswith(".txt")])
         annotated_pages = annotations_df[annotations_df["ID"] == book].shape[0]
         completion = (annotated_pages / total_pages) * 100 if total_pages > 0 else 0
         book_completion[book] = round(completion, 2)
@@ -182,7 +186,6 @@ def index():
         page=page,
         total_pages=total_pages,
     )
-
 
 @app.route("/book/<book_id>", methods=["GET", "POST"])
 def book(book_id):

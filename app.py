@@ -1,10 +1,11 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash
 import os
 import json
 import pandas as pd
 import logging
 
 app = Flask(__name__)
+app.secret_key = os.urandom(24)  # Generates a random secret key
 
 SETTINGS_FILE = "settings.json"
 
@@ -12,7 +13,6 @@ SETTINGS_FILE = "settings.json"
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
 )
-
 
 # Load settings
 def load_settings():
@@ -77,7 +77,11 @@ else:
 
 # Save annotations
 def save_annotations():
-    annotations_df.to_csv(settings["annotations_csv"], index=False)
+    try:
+        annotations_df.to_csv(settings["annotations_csv"], index=False)
+    except PermissionError:
+        flash("You have the Annotations CSV file open in another application. Please close it before continuing to run this app.", "error")
+
 
 
 def load_volume_notes():
@@ -87,7 +91,11 @@ def load_volume_notes():
 
 
 def save_volume_notes(volume_notes_df):
-    volume_notes_df.to_csv(settings["volume_notes_csv"], index=False)
+    try:
+        volume_notes_df.to_csv(settings["volume_notes_csv"], index=False)
+    except PermissionError:
+        flash("You have the Volume Notes CSV file open in another application. Please close it before continuing to run this app.", "error")
+
 
 
 # Load metadata if provided
@@ -132,15 +140,19 @@ def configure():
 
     return render_template("settings.html", settings=settings)
 
+
 @app.route("/")
 def index():
     if not all(settings.get(key) for key in required_keys):
         return redirect(url_for("configure"))
 
     books = [
-        book for book in os.listdir(settings["books_dir"])
-        if os.path.isdir(os.path.join(settings["books_dir"], book)) and any(
-            file.endswith(".txt") for file in os.listdir(os.path.join(settings["books_dir"], book))
+        book
+        for book in os.listdir(settings["books_dir"])
+        if os.path.isdir(os.path.join(settings["books_dir"], book))
+        and any(
+            file.endswith(".txt")
+            for file in os.listdir(os.path.join(settings["books_dir"], book))
         )
     ]
     books_per_page = settings["books_per_page"]  # Number of books per page
@@ -154,7 +166,9 @@ def index():
 
     for book in paginated_books:
         book_path = os.path.join(settings["books_dir"], book)
-        total_pages = len([file for file in os.listdir(book_path) if file.endswith(".txt")])
+        total_pages = len(
+            [file for file in os.listdir(book_path) if file.endswith(".txt")]
+        )
         annotated_pages = annotations_df[annotations_df["ID"] == book].shape[0]
         completion = (annotated_pages / total_pages) * 100 if total_pages > 0 else 0
         book_completion[book] = round(completion, 2)
@@ -186,6 +200,7 @@ def index():
         page=page,
         total_pages=total_pages,
     )
+
 
 @app.route("/book/<book_id>", methods=["GET", "POST"])
 def book(book_id):
@@ -234,12 +249,11 @@ def book(book_id):
             page = request.form["page"]
             state = request.form["state"]
 
-            # Check if the current state is the same as the clicked button to remove the annotation
-            if annotations_df[
-                (annotations_df["ID"] == book_id)
-                & (annotations_df["Page"] == page)
-                & (annotations_df["State"] == state)
-            ].empty:
+            current_annotation = annotations_df[
+                (annotations_df["ID"] == book_id) & (annotations_df["Page"] == page)
+            ]
+
+            if current_annotation.empty:
                 # Add the new annotation
                 new_annotation = pd.DataFrame(
                     {"ID": [book_id], "Page": [page], "State": [state]}
@@ -247,13 +261,22 @@ def book(book_id):
                 annotations_df = pd.concat(
                     [annotations_df, new_annotation], ignore_index=True
                 )
+
             else:
-                # Remove the existing annotation
-                annotations_df = annotations_df[
-                    (annotations_df["ID"] != book_id)
-                    | (annotations_df["Page"] != page)
-                    | (annotations_df["State"] != state)
-                ]
+                current_state = current_annotation["State"].values[0]
+                if current_state == state:
+                    # Remove the existing annotation
+                    annotations_df = annotations_df[
+                        (annotations_df["ID"] != book_id)
+                        | (annotations_df["Page"] != page)
+                    ]
+                else:
+                    # Update to the new state
+                    annotations_df.loc[
+                        (annotations_df["ID"] == book_id)
+                        & (annotations_df["Page"] == page),
+                        "State",
+                    ] = state
 
             save_annotations()
             return redirect(
@@ -336,10 +359,10 @@ def book(book_id):
         volume_notes=volume_notes,
     )
 
-@app.route("/annotations", methods=["GET"])
-def get_annotations():
-    return annotations_df.to_csv(index=False)
 
+# @app.route("/annotations", methods=["GET"])
+# def get_annotations():
+#     return annotations_df.to_csv(index=False)
 
 if __name__ == "__main__":
     app.run(debug=True)

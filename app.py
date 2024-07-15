@@ -1,4 +1,14 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    get_flashed_messages,
+    session,
+    jsonify,
+)
 import os
 import json
 import pandas as pd
@@ -13,6 +23,7 @@ SETTINGS_FILE = "settings.json"
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
 )
+
 
 # Load settings
 def load_settings():
@@ -75,13 +86,26 @@ else:
     annotations_df = pd.DataFrame(columns=["ID", "Page", "State"])
 
 
+# # Save annotations
+# def save_annotations():
+#     try:
+#         annotations_df.to_csv(settings["annotations_csv"], index=False)
+#     except PermissionError:
+#         logging.error("Permission denied while trying to save annotations.csv")
+#         flash(
+#             "You have the Annotations CSV file open in another application. Please close it before continuing to run this app.",
+#             "error",
+#         )
+#         logging.info("Flash message created for annotations.csv")
+#         return False  # Indicate the save failed
 # Save annotations
 def save_annotations():
     try:
         annotations_df.to_csv(settings["annotations_csv"], index=False)
+        return True
     except PermissionError:
-        flash("You have the Annotations CSV file open in another application. Please close it before continuing to run this app.", "error")
-
+        logging.error("Permission denied while trying to save annotations.csv")
+        return False
 
 
 def load_volume_notes():
@@ -94,8 +118,13 @@ def save_volume_notes(volume_notes_df):
     try:
         volume_notes_df.to_csv(settings["volume_notes_csv"], index=False)
     except PermissionError:
-        flash("You have the Volume Notes CSV file open in another application. Please close it before continuing to run this app.", "error")
-
+        logging.error("Permission denied while trying to save annotations.csv")
+        flash(
+            "You have the Annotations CSV file open in another application. Please close it before continuing to run this app.",
+            "error",
+        )
+        logging.info("Flash message created for annotations.csv")
+        session.modified = True
 
 
 # Load metadata if provided
@@ -225,7 +254,19 @@ def book(book_id):
                         [annotations_df, new_annotation], ignore_index=True
                     )
 
-            save_annotations()
+            try:
+                save_annotations()
+            except PermissionError as e:
+                logging.error(str(e))
+                return (
+                    jsonify(
+                        {
+                            "error": "Permission denied while trying to save annotations.csv"
+                        }
+                    ),
+                    403,
+                )
+
             return redirect(
                 url_for("book", book_id=book_id, page=request.args.get("page", 1))
             )
@@ -244,6 +285,13 @@ def book(book_id):
                 )
 
             save_volume_notes(volume_notes_df)
+            if "error" in [
+                category
+                for category, message in get_flashed_messages(with_categories=True)
+            ]:
+                return redirect(
+                    url_for("book", book_id=book_id, page=request.args.get("page", 1))
+                )
 
         else:
             page = request.form["page"]
@@ -279,9 +327,13 @@ def book(book_id):
                     ] = state
 
             save_annotations()
-            return redirect(
-                url_for("book", book_id=book_id, page=request.args.get("page", 1))
-            )
+            if "error" in [
+                category
+                for category, message in get_flashed_messages(with_categories=True)
+            ]:
+                return redirect(
+                    url_for("book", book_id=book_id, page=request.args.get("page", 1))
+                )
 
     page = int(request.args.get("page", 1))
     book_path = os.path.join(settings["books_dir"], book_id)
@@ -342,6 +394,10 @@ def book(book_id):
         volume_notes = volume_notes.values[0]
     else:
         volume_notes = ""
+
+    # Log flashed messages
+    # flash_messages = get_flashed_messages(with_categories=True)
+    # logging.debug(f"Flashed messages: {flash_messages}")
 
     return render_template(
         "book.html",

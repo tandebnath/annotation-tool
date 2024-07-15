@@ -1,4 +1,5 @@
-{% extends "layout.html" %} {% block content %} {% with messages =
+{% extends "layout.html" %} {% block content %}
+<!-- {% with messages =
 get_flashed_messages(with_categories=true) %} {% if messages %}
 <div class="alert-container">
   {% for category, message in messages %}
@@ -16,7 +17,7 @@ get_flashed_messages(with_categories=true) %} {% if messages %}
   </div>
   {% endfor %}
 </div>
-{% endif %} {% endwith %}
+{% endif %} {% endwith %} -->
 
 <style>
   .mark-all-as-btn {
@@ -264,14 +265,20 @@ get_flashed_messages(with_categories=true) %} {% if messages %}
         processData: false,
         contentType: false,
         success: function (response) {
-          location.reload(); // Reload to update the button states
+          if (response.error) {
+            alert(response.error);
+          } else {
+            location.reload(); // Reload to update the button states
+          }
         },
         error: function (error) {
           console.error("Error:", error);
+          alert("An unexpected error occurred.");
         },
       });
     });
   });
+
   document
     .getElementById("clear-button")
     .addEventListener("click", function () {

@@ -37,25 +37,47 @@
   <form method="post" class="d-flex flex-column">
     <div class="form-group">
       <label for="books_dir" class="form-label">Path to Books Directory</label>
-      <input
-        type="text"
-        class="form-control"
-        id="books_dir"
-        name="books_dir"
-        value="{{ settings['books_dir'] }}"
-      />
+      <div class="input-group">
+        <input
+          type="text"
+          class="form-control"
+          id="books_dir"
+          name="books_dir"
+          value="{{ settings['books_dir'] }}"
+        />
+        <div class="input-group-append">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            onclick="selectPath('books_dir')"
+          >
+            Choose
+          </button>
+        </div>
+      </div>
     </div>
     <div class="form-group">
       <label for="annotations_csv" class="form-label"
         >Path to Annotations CSV</label
       >
-      <input
-        type="text"
-        class="form-control"
-        id="annotations_csv"
-        name="annotations_csv"
-        value="{{ settings['annotations_csv'] }}"
-      />
+      <div class="input-group">
+        <input
+          type="text"
+          class="form-control"
+          id="annotations_csv"
+          name="annotations_csv"
+          value="{{ settings['annotations_csv'] }}"
+        />
+        <div class="input-group-append">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            onclick="selectPath('annotations_csv')"
+          >
+            Choose
+          </button>
+        </div>
+      </div>
     </div>
     <div class="form-group">
       <label for="books_per_page" class="form-label"
@@ -93,13 +115,24 @@
     </div>
     <div class="form-group">
       <label for="metadata_csv" class="form-label">Path to Metadata CSV</label>
-      <input
-        type="text"
-        class="form-control"
-        id="metadata_csv"
-        name="metadata_csv"
-        value="{{ settings['metadata_csv'] }}"
-      />
+      <div class="input-group">
+        <input
+          type="text"
+          class="form-control"
+          id="metadata_csv"
+          name="metadata_csv"
+          value="{{ settings['metadata_csv'] }}"
+        />
+        <div class="input-group-append">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            onclick="selectPath('metadata_csv')"
+          >
+            Choose
+          </button>
+        </div>
+      </div>
     </div>
     <div class="form-group">
       <label for="mark_as_state" class="form-label"
@@ -117,17 +150,36 @@
       <label for="volume_notes_csv" class="form-label"
         >Path to Volume Notes CSV</label
       >
-      <input
-        type="text"
-        class="form-control"
-        id="volume_notes_csv"
-        name="volume_notes_csv"
-        value="{{ settings['volume_notes_csv'] }}"
-      />
+      <div class="input-group">
+        <input
+          type="text"
+          class="form-control"
+          id="volume_notes_csv"
+          name="volume_notes_csv"
+          value="{{ settings['volume_notes_csv'] }}"
+        />
+        <div class="input-group-append">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            onclick="selectPath('volume_notes_csv')"
+          >
+            Choose
+          </button>
+        </div>
+      </div>
     </div>
     <div class="btn-div">
       <button type="submit" class="btn btn-primary">Save</button>
     </div>
   </form>
 </div>
+
+<script>
+  function selectPath(inputId) {
+    eel.select_path()(function (path) {
+      document.getElementById(inputId).value = path;
+    });
+  }
+</script>
 {% endblock %}

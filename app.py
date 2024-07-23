@@ -1,3 +1,4 @@
+import eel
 from flask import Flask, render_template, request, redirect, url_for, flash
 import os
 import json
@@ -9,10 +10,21 @@ app.secret_key = os.urandom(24)  # Generates a random secret key
 
 SETTINGS_FILE = "settings.json"
 
+# Initialize Eel with the web folder
+eel.init('templates')
+
 # Set up logging
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
 )
+
+# Eel function to open file dialog and return selected path
+@eel.expose
+def select_path():
+    root = tk.Tk()
+    root.withdraw()
+    selected_path = filedialog.askdirectory()
+    return selected_path
 
 # Load settings
 def load_settings():
@@ -37,12 +49,10 @@ def load_settings():
 
     return default_settings
 
-
 # Save settings
 def save_settings(settings):
     with open(SETTINGS_FILE, "w") as f:
         json.dump(settings, f)
-
 
 settings = load_settings()
 
@@ -57,7 +67,6 @@ required_keys = [
     "volume_notes_csv",
 ]
 
-
 @app.before_request
 def check_settings():
     if (
@@ -67,40 +76,38 @@ def check_settings():
     ):
         return redirect(url_for("configure"))
 
-
 # Load existing annotations
 if os.path.exists(settings["annotations_csv"]):
     annotations_df = pd.read_csv(settings["annotations_csv"])
 else:
     annotations_df = pd.DataFrame(columns=["ID", "Page", "State"])
 
-
 # Save annotations
 def save_annotations():
     try:
         annotations_df.to_csv(settings["annotations_csv"], index=False)
     except PermissionError:
-        flash("You have the Annotations CSV file open in another application. Please close it before continuing to run this app.", "error")
-
-
+        flash(
+            "You have the Annotations CSV file open in another application. Please close it before continuing to run this app.",
+            "error",
+        )
 
 def load_volume_notes():
     if os.path.exists(settings["volume_notes_csv"]):
         return pd.read_csv(settings["volume_notes_csv"])
     return pd.DataFrame(columns=["ID", "Notes"])
 
-
 def save_volume_notes(volume_notes_df):
     try:
         volume_notes_df.to_csv(settings["volume_notes_csv"], index=False)
     except PermissionError:
-        flash("You have the Volume Notes CSV file open in another application. Please close it before continuing to run this app.", "error")
-
-
+        flash(
+            "You have the Volume Notes CSV file open in another application. Please close it before continuing to run this app.",
+            "error",
+        )
 
 # Load metadata if provided
 metadata_df = pd.DataFrame()
-
 
 def load_metadata():
     global metadata_df
@@ -117,11 +124,9 @@ def load_metadata():
         else:
             logging.warning(f"Metadata CSV not found at {metadata_csv_path}")
 
-
 @app.context_processor
 def utility_processor():
     return dict(all=all, settings=settings, int=int, max=max, min=min)
-
 
 @app.route("/settings", methods=["GET", "POST"])
 def configure():
@@ -139,7 +144,6 @@ def configure():
         return redirect(url_for("index"))
 
     return render_template("settings.html", settings=settings)
-
 
 @app.route("/")
 def index():
@@ -200,7 +204,6 @@ def index():
         page=page,
         total_pages=total_pages,
     )
-
 
 @app.route("/book/<book_id>", methods=["GET", "POST"])
 def book(book_id):
@@ -360,9 +363,6 @@ def book(book_id):
     )
 
 
-# @app.route("/annotations", methods=["GET"])
-# def get_annotations():
-#     return annotations_df.to_csv(index=False)
-
+# Start the Eel application
 if __name__ == "__main__":
-    app.run(debug=True)
+    eel.start('settings.html')

@@ -272,12 +272,20 @@ get_flashed_messages(with_categories=true) %} {% if messages %}
       });
     });
   });
+
   document
     .getElementById("clear-button")
     .addEventListener("click", function () {
       document.getElementById("volume_notes").value = "";
       document.forms[0].submit();
     });
+
+  // Handling flashed messages
+  // {% if messages %}
+  //   {% for category, message in messages %}
+  //     alert("{{ message }}");
+  //   {% endfor %}
+  // {% endif %}
 </script>
 
 {% endblock %}

@@ -20,30 +20,47 @@ get_flashed_messages(with_categories=true) %} {% if messages %}
 
 <style>
   .mark-all-as-btn {
-    background-color: #0096ff;
-    border-color: #0096ff;
-    color: white; /* Adjust this if you need a different text color */
+    background-color: #f4c430;
+    border-color: #f4c430;
+    /* background-color: #0096ff;
+    border-color: #0096ff; */
+    color: black; /* Adjust this if you need a different text color */
   }
+
   .mark-all-as-btn:hover {
     transform: scale(1.05);
-    color: white;
+    color: black;
   }
+
   .save-btn {
     background-color: #0096ff;
     border-color: #0096ff;
     color: white;
     margin-right: 1rem;
   }
+
   .save-btn:hover {
     transform: scale(1.05);
     color: white;
   }
+
   .clear-btn {
     background-color: #d70040;
     border-color: #d70040;
     color: white;
   }
+
   .clear-btn:hover {
+    transform: scale(1.05);
+    color: white;
+  }
+
+  .jump-btn {
+    background-color: #0096ff;
+    border-color: #0096ff;
+    color: white;
+  }
+  .jump-btn:hover {
     transform: scale(1.05);
     color: white;
   }
@@ -115,6 +132,44 @@ get_flashed_messages(with_categories=true) %} {% if messages %}
 <hr class="mt-2 mb-3" />
 
 <div class="mb-3 d-flex justify-content-center">
+  <form method="post" id="range-annotation-form" class="d-flex">
+    <input
+      type="number"
+      name="from_page"
+      id="from_page"
+      class="form-control"
+      placeholder="From Page"
+      min="1"
+      style="width: 10rem; margin-right: 0.5rem"
+      required
+    />
+    <input
+      type="number"
+      name="to_page"
+      id="to_page"
+      class="form-control"
+      placeholder="To Page"
+      min="1"
+      style="width: 10rem; margin-right: 0.5rem"
+      required
+    />
+    <select
+      name="range_state"
+      id="range_state"
+      class="form-select"
+      style="margin-right: 0.5rem; border: 0; border-radius: 0.25rem"
+      required
+    >
+      <option value="" disabled selected>Select Label</option>
+      {% for state in states %}
+      <option value="{{ state }}">{{ state }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn save-btn">Save</button>
+  </form>
+</div>
+
+<div class="mb-3 d-flex justify-content-center">
   <form method="post">
     <button
       type="submit"
@@ -127,24 +182,53 @@ get_flashed_messages(with_categories=true) %} {% if messages %}
   </form>
 </div>
 
+<hr class="mt-2 mb-3" />
+
+<div class="mb-3 d-flex justify-content-end">
+  <form method="post">
+    <button
+      type="submit"
+      name="jump_to_unannotated"
+      value="true"
+      class="btn jump-btn"
+    >
+      Jump to Next Unannotated Work
+    </button>
+  </form>
+</div>
+
 {% for page, text in content %}
-<div class="card my-3">
-  <div class="card-body">
-    <pre>{{ text }}</pre>
-    <form method="post" class="annotation-form">
-      <input type="hidden" name="page" value="{{ page }}" />
-      {% for state in states %}
-      <button
-        type="submit"
-        name="state"
-        value="{{ state }}"
-        class="btn btn-sm"
-        style="background-color: {% if annotations.get(page) == state %}#AFE1AF{% else %}#E5E4E2{% endif %}; color: black;"
-      >
-        {{ state }}
-      </button>
-      {% endfor %}
-    </form>
+<div class="d-flex align-items-start my-3">
+  <div
+    class="page-number-card mr-2"
+    style="
+      background-color: white;
+      color: #d70040;
+      font-weight: bold;
+      padding: 0.5rem;
+      border-radius: 0.25rem;
+    "
+  >
+    {{ page.replace('.txt', '').lstrip('0') }}.
+  </div>
+  <div class="card" style="flex-grow: 1">
+    <div class="card-body">
+      <pre>{{ text }}</pre>
+      <form method="post" class="annotation-form">
+        <input type="hidden" name="page" value="{{ page }}" />
+        {% for state in states %}
+        <button
+          type="submit"
+          name="state"
+          value="{{ state }}"
+          class="btn btn-sm"
+          style="background-color: {% if annotations.get(page) == state %}#AFE1AF{% else %}#E5E4E2{% endif %}; color: black;"
+        >
+          {{ state }}
+        </button>
+        {% endfor %}
+      </form>
+    </div>
   </div>
 </div>
 {% endfor %}
@@ -179,6 +263,14 @@ get_flashed_messages(with_categories=true) %} {% if messages %}
         >1</a
       >
     </li>
+    <li class="page-item">
+      <a
+        class="page-link"
+        href="{{ url_for('book', book_id=book_id, page=2) }}"
+        style="color: #0f52ba"
+        >2</a
+      >
+    </li>
     <li class="page-item disabled"><span class="page-link">...</span></li>
     {% endif %} {% for p in range(max(1, page - 2), min(total_pages, page + 2) +
     1) %}
@@ -187,11 +279,20 @@ get_flashed_messages(with_categories=true) %} {% if messages %}
         class="page-link"
         href="{{ url_for('book', book_id=book_id, page=p) }}"
         style="color: black; {% if p == page %}border-color:#0F52BA; background-color:#0F52BA; color: white{% endif %} {% if p != page %}color: #0F52BA{% endif %}"
-        >{{ p }}</a
       >
+        {{ p }}
+      </a>
     </li>
     {% endfor %} {% if page < total_pages - 2 %}
     <li class="page-item disabled"><span class="page-link">...</span></li>
+    <li class="page-item">
+      <a
+        class="page-link"
+        href="{{ url_for('book', book_id=book_id, page=total_pages-1) }}"
+        style="color: #0f52ba"
+        >{{ total_pages-1 }}</a
+      >
+    </li>
     <li class="page-item">
       <a
         class="page-link"
@@ -271,7 +372,38 @@ get_flashed_messages(with_categories=true) %} {% if messages %}
         },
       });
     });
+
+    $("#range-annotation-form").on("submit", function (e) {
+      e.preventDefault();
+
+      var fromPage = $("#from_page").val();
+      var toPage = $("#to_page").val();
+      var rangeState = $("#range_state").val();
+
+      if (fromPage && toPage && rangeState) {
+        $.ajax({
+          type: "POST",
+          url: window.location.href,
+          data: {
+            action: "range_annotation",
+            from_page: fromPage,
+            to_page: toPage,
+            range_state: rangeState,
+          },
+          success: function (response) {
+            $("#from_page").val("");
+            $("#to_page").val("");
+            $("#range_state").val("");
+            location.reload(); // Reload to update the annotations
+          },
+          error: function (error) {
+            console.error("Error:", error);
+          },
+        });
+      }
+    });
   });
+
   document
     .getElementById("clear-button")
     .addEventListener("click", function () {

@@ -19,6 +19,7 @@ get_flashed_messages(with_categories=true) %} {% if messages %}
 {% endif %} {% endwith %}
 
 <h1>List of Books</h1>
+
 <style>
   .book-list {
     display: flex;
@@ -137,6 +138,26 @@ get_flashed_messages(with_categories=true) %} {% if messages %}
   }
 </style>
 
+<div class="d-flex justify-content-center align-items-center mb-4">
+  <form method="GET" action="{{ url_for('index') }}" class="d-flex">
+    <input
+      type="text"
+      name="search"
+      class="form-control"
+      placeholder="Search by ID, Title, Author"
+      value="{{ search_query }}"
+      style="width: 20rem; margin-right: 1rem"
+    />
+    <button
+      type="submit"
+      class="btn btn-primary"
+      style="background-color: #0f52ba; color: white"
+    >
+      Search
+    </button>
+  </form>
+</div>
+
 <div class="book-list">
   {% for book in books %}
   <a href="{{ url_for('book', book_id=book) }}" class="book-link">
@@ -209,9 +230,8 @@ get_flashed_messages(with_categories=true) %} {% if messages %}
         class="page-link"
         href="{{ url_for('index', page=p) }}"
         style="color: black; {% if p == page %}border-color:#0F52BA; background-color:#0F52BA; color: white{% endif %} {% if p != page %}color: #0F52BA{% endif %}"
+        >{{ p }}</a
       >
-        {{ p }}
-      </a>
     </li>
     {% endfor %} {% if page < total_pages - 2 %}
     <li class="page-item disabled"><span class="page-link">...</span></li>

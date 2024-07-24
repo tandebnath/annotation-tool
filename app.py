@@ -14,6 +14,7 @@ logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
+
 # Load settings
 def load_settings():
     default_settings = {
@@ -80,8 +81,10 @@ def save_annotations():
     try:
         annotations_df.to_csv(settings["annotations_csv"], index=False)
     except PermissionError:
-        flash("You have the Annotations CSV file open in another application. Please close it before continuing to run this app.", "error")
-
+        flash(
+            "You have the Annotations CSV file open in another application. Please close it before continuing to run this app.",
+            "error",
+        )
 
 
 def load_volume_notes():
@@ -94,8 +97,10 @@ def save_volume_notes(volume_notes_df):
     try:
         volume_notes_df.to_csv(settings["volume_notes_csv"], index=False)
     except PermissionError:
-        flash("You have the Volume Notes CSV file open in another application. Please close it before continuing to run this app.", "error")
-
+        flash(
+            "You have the Volume Notes CSV file open in another application. Please close it before continuing to run this app.",
+            "error",
+        )
 
 
 # Load metadata if provided
@@ -141,10 +146,13 @@ def configure():
     return render_template("settings.html", settings=settings)
 
 
-@app.route("/")
+@app.route("/", methods=["GET", "POST"])
 def index():
     if not all(settings.get(key) for key in required_keys):
         return redirect(url_for("configure"))
+
+    # Get the search query
+    search_query = request.args.get("search", "").lower()
 
     books = [
         book
@@ -155,16 +163,14 @@ def index():
             for file in os.listdir(os.path.join(settings["books_dir"], book))
         )
     ]
-    books_per_page = settings["books_per_page"]  # Number of books per page
-    page = request.args.get("page", 1, type=int)
-    start_index = (page - 1) * books_per_page
-    end_index = start_index + books_per_page
-    paginated_books = books[start_index:end_index]
 
-    book_completion = {}
+    # Sort books
+    books.sort()
+
     book_metadata = {}
+    book_completion = {}
 
-    for book in paginated_books:
+    for book in books:
         book_path = os.path.join(settings["books_dir"], book)
         total_pages = len(
             [file for file in os.listdir(book_path) if file.endswith(".txt")]
@@ -183,9 +189,33 @@ def index():
 
             if metadata is not None and not metadata.empty:
                 book_metadata[book] = {
-                    "title": metadata["title"].values[0][:10],
+                    "title": metadata["title"].values[0],
                     "author": metadata["author"].values[0],
                 }
+
+    # Filter books by search query
+    if search_query:
+        books = [
+            book
+            for book in books
+            if (
+                search_query in book.lower()
+                or (
+                    book in book_metadata
+                    and search_query in book_metadata[book]["title"].lower()
+                )
+                or (
+                    book in book_metadata
+                    and search_query in book_metadata[book]["author"].lower()
+                )
+            )
+        ]
+
+    books_per_page = settings["books_per_page"]  # Number of books per page
+    page = request.args.get("page", 1, type=int)
+    start_index = (page - 1) * books_per_page
+    end_index = start_index + books_per_page
+    paginated_books = books[start_index:end_index]
 
     total_books = len(books)
     total_pages = (
@@ -199,6 +229,7 @@ def index():
         book_metadata=book_metadata,
         page=page,
         total_pages=total_pages,
+        search_query=search_query,
     )
 
 
@@ -208,29 +239,8 @@ def book(book_id):
     volume_notes_df = load_volume_notes()
 
     if request.method == "POST":
-        if "mark_as_state" in request.form:
-            mark_as_state = request.form["mark_as_state"]
-            book_path = os.path.join(settings["books_dir"], book_id)
-            pages = sorted(os.listdir(book_path))
-
-            for page_file in pages:
-                page = page_file  # Keep the .txt extension
-                if annotations_df[
-                    (annotations_df["ID"] == book_id) & (annotations_df["Page"] == page)
-                ].empty:
-                    new_annotation = pd.DataFrame(
-                        {"ID": [book_id], "Page": [page], "State": [mark_as_state]}
-                    )
-                    annotations_df = pd.concat(
-                        [annotations_df, new_annotation], ignore_index=True
-                    )
-
-            save_annotations()
-            return redirect(
-                url_for("book", book_id=book_id, page=request.args.get("page", 1))
-            )
-
-        elif "volume_notes" in request.form:
+        action = request.form.get("action")
+        if action == "save":
             notes = request.form["volume_notes"]
 
             # Remove any existing notes for this volume
@@ -245,43 +255,95 @@ def book(book_id):
 
             save_volume_notes(volume_notes_df)
 
-        else:
-            page = request.form["page"]
-            state = request.form["state"]
+        elif action == "clear":
+            volume_notes_df = volume_notes_df[volume_notes_df["ID"] != book_id]
+            save_volume_notes(volume_notes_df)
 
-            current_annotation = annotations_df[
-                (annotations_df["ID"] == book_id) & (annotations_df["Page"] == page)
-            ]
+        elif action == "range_annotation":
+            from_page = int(request.form["from_page"])
+            to_page = int(request.form["to_page"])
+            range_state = request.form["range_state"]
 
-            if current_annotation.empty:
-                # Add the new annotation
-                new_annotation = pd.DataFrame(
-                    {"ID": [book_id], "Page": [page], "State": [state]}
-                )
-                annotations_df = pd.concat(
-                    [annotations_df, new_annotation], ignore_index=True
-                )
-
-            else:
-                current_state = current_annotation["State"].values[0]
-                if current_state == state:
-                    # Remove the existing annotation
-                    annotations_df = annotations_df[
-                        (annotations_df["ID"] != book_id)
-                        | (annotations_df["Page"] != page)
-                    ]
+            book_path = os.path.join(settings["books_dir"], book_id)
+            pages = sorted(os.listdir(book_path))
+            for page_file in pages[from_page - 1 : to_page]:
+                page = page_file
+                current_annotation = annotations_df[
+                    (annotations_df["ID"] == book_id) & (annotations_df["Page"] == page)
+                ]
+                if current_annotation.empty:
+                    new_annotation = pd.DataFrame(
+                        {"ID": [book_id], "Page": [page], "State": [range_state]}
+                    )
+                    annotations_df = pd.concat(
+                        [annotations_df, new_annotation], ignore_index=True
+                    )
                 else:
-                    # Update to the new state
                     annotations_df.loc[
                         (annotations_df["ID"] == book_id)
                         & (annotations_df["Page"] == page),
                         "State",
-                    ] = state
+                    ] = range_state
 
             save_annotations()
-            return redirect(
-                url_for("book", book_id=book_id, page=request.args.get("page", 1))
-            )
+
+        elif request.form.get("jump_to_unannotated"):
+            book_path = os.path.join(settings["books_dir"], book_id)
+            pages = sorted(os.listdir(book_path))
+            unannotated_pages = [
+                page
+                for page in pages
+                if annotations_df[
+                    (annotations_df["ID"] == book_id) & (annotations_df["Page"] == page)
+                ].empty
+            ]
+
+            if unannotated_pages:
+                first_unannotated_page_index = pages.index(unannotated_pages[0]) + 1
+                total_files_per_page = settings["files_per_page"]
+                page_number = (
+                    first_unannotated_page_index + total_files_per_page - 1
+                ) // total_files_per_page
+                return redirect(url_for("book", book_id=book_id, page=page_number))
+
+        else:
+            page = request.form.get("page")
+            state = request.form.get("state")
+
+            if page and state:
+                current_annotation = annotations_df[
+                    (annotations_df["ID"] == book_id) & (annotations_df["Page"] == page)
+                ]
+
+                if current_annotation.empty:
+                    # Add the new annotation
+                    new_annotation = pd.DataFrame(
+                        {"ID": [book_id], "Page": [page], "State": [state]}
+                    )
+                    annotations_df = pd.concat(
+                        [annotations_df, new_annotation], ignore_index=True
+                    )
+                else:
+                    current_state = current_annotation["State"].values[0]
+                    if current_state == state:
+                        # Remove the existing annotation
+                        annotations_df = annotations_df[
+                            (annotations_df["ID"] != book_id)
+                            | (annotations_df["Page"] != page)
+                        ]
+                    else:
+                        # Update to the new state
+                        annotations_df.loc[
+                            (annotations_df["ID"] == book_id)
+                            & (annotations_df["Page"] == page),
+                            "State",
+                        ] = state
+
+                save_annotations()
+
+        return redirect(
+            url_for("book", book_id=book_id, page=request.args.get("page", 1))
+        )
 
     page = int(request.args.get("page", 1))
     book_path = os.path.join(settings["books_dir"], book_id)
@@ -358,7 +420,6 @@ def book(book_id):
         mark_as_state=settings["mark_as_state"],
         volume_notes=volume_notes,
     )
-
 
 # @app.route("/annotations", methods=["GET"])
 # def get_annotations():

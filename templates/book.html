@@ -64,7 +64,6 @@ get_flashed_messages(with_categories=true) %} {% if messages %}
     transform: scale(1.05);
     color: white;
   }
-
 </style>
 
 <a href="{{ url_for('index') }}" class="btn btn-secondary btn-sm mb-3 mt-3"
@@ -199,23 +198,37 @@ get_flashed_messages(with_categories=true) %} {% if messages %}
 </div>
 
 {% for page, text in content %}
-<div class="card my-3">
-  <div class="card-body">
-    <pre>{{ text }}</pre>
-    <form method="post" class="annotation-form">
-      <input type="hidden" name="page" value="{{ page }}" />
-      {% for state in states %}
-      <button
-        type="submit"
-        name="state"
-        value="{{ state }}"
-        class="btn btn-sm"
-        style="background-color: {% if annotations.get(page) == state %}#AFE1AF{% else %}#E5E4E2{% endif %}; color: black;"
-      >
-        {{ state }}
-      </button>
-      {% endfor %}
-    </form>
+<div class="d-flex align-items-start my-3">
+  <div
+    class="page-number-card mr-2"
+    style="
+      background-color: white;
+      color: #d70040;
+      font-weight: bold;
+      padding: 0.5rem;
+      border-radius: 0.25rem;
+    "
+  >
+    {{ page.replace('.txt', '').lstrip('0') }}.
+  </div>
+  <div class="card" style="flex-grow: 1">
+    <div class="card-body">
+      <pre>{{ text }}</pre>
+      <form method="post" class="annotation-form">
+        <input type="hidden" name="page" value="{{ page }}" />
+        {% for state in states %}
+        <button
+          type="submit"
+          name="state"
+          value="{{ state }}"
+          class="btn btn-sm"
+          style="background-color: {% if annotations.get(page) == state %}#AFE1AF{% else %}#E5E4E2{% endif %}; color: black;"
+        >
+          {{ state }}
+        </button>
+        {% endfor %}
+      </form>
+    </div>
   </div>
 </div>
 {% endfor %}
@@ -250,6 +263,14 @@ get_flashed_messages(with_categories=true) %} {% if messages %}
         >1</a
       >
     </li>
+    <li class="page-item">
+      <a
+        class="page-link"
+        href="{{ url_for('book', book_id=book_id, page=2) }}"
+        style="color: #0f52ba"
+        >2</a
+      >
+    </li>
     <li class="page-item disabled"><span class="page-link">...</span></li>
     {% endif %} {% for p in range(max(1, page - 2), min(total_pages, page + 2) +
     1) %}
@@ -258,8 +279,9 @@ get_flashed_messages(with_categories=true) %} {% if messages %}
         class="page-link"
         href="{{ url_for('book', book_id=book_id, page=p) }}"
         style="color: black; {% if p == page %}border-color:#0F52BA; background-color:#0F52BA; color: white{% endif %} {% if p != page %}color: #0F52BA{% endif %}"
-        >{{ p }}</a
       >
+        {{ p }}
+      </a>
     </li>
     {% endfor %} {% if page < total_pages - 2 %}
     <li class="page-item disabled"><span class="page-link">...</span></li>

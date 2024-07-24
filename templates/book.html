@@ -20,14 +20,16 @@ get_flashed_messages(with_categories=true) %} {% if messages %}
 
 <style>
   .mark-all-as-btn {
-    background-color: #0096ff;
-    border-color: #0096ff;
-    color: white; /* Adjust this if you need a different text color */
+    background-color: #f4c430;
+    border-color: #f4c430;
+    /* background-color: #0096ff;
+    border-color: #0096ff; */
+    color: black; /* Adjust this if you need a different text color */
   }
 
   .mark-all-as-btn:hover {
     transform: scale(1.05);
-    color: white;
+    color: black;
   }
 
   .save-btn {
@@ -52,6 +54,17 @@ get_flashed_messages(with_categories=true) %} {% if messages %}
     transform: scale(1.05);
     color: white;
   }
+
+  .jump-btn {
+    background-color: #0096ff;
+    border-color: #0096ff;
+    color: white;
+  }
+  .jump-btn:hover {
+    transform: scale(1.05);
+    color: white;
+  }
+
 </style>
 
 <a href="{{ url_for('index') }}" class="btn btn-secondary btn-sm mb-3 mt-3"
@@ -120,19 +133,6 @@ get_flashed_messages(with_categories=true) %} {% if messages %}
 <hr class="mt-2 mb-3" />
 
 <div class="mb-3 d-flex justify-content-center">
-  <form method="post">
-    <button
-      type="submit"
-      name="mark_as_state"
-      value="{{ mark_as_state }}"
-      class="btn mark-all-as-btn"
-    >
-      Mark all as {{ mark_as_state }}
-    </button>
-  </form>
-</div>
-
-<div class="mb-3 d-flex justify-content-center">
   <form method="post" id="range-annotation-form" class="d-flex">
     <input
       type="number"
@@ -166,11 +166,34 @@ get_flashed_messages(with_categories=true) %} {% if messages %}
       <option value="{{ state }}">{{ state }}</option>
       {% endfor %}
     </select>
+    <button type="submit" class="btn save-btn">Save</button>
+  </form>
+</div>
+
+<div class="mb-3 d-flex justify-content-center">
+  <form method="post">
     <button
       type="submit"
-      class="btn save-btn"
+      name="mark_as_state"
+      value="{{ mark_as_state }}"
+      class="btn mark-all-as-btn"
     >
-      Save
+      Mark all as {{ mark_as_state }}
+    </button>
+  </form>
+</div>
+
+<hr class="mt-2 mb-3" />
+
+<div class="mb-3 d-flex justify-content-end">
+  <form method="post">
+    <button
+      type="submit"
+      name="jump_to_unannotated"
+      value="true"
+      class="btn jump-btn"
+    >
+      Jump to Next Unannotated Work
     </button>
   </form>
 </div>
@@ -240,6 +263,14 @@ get_flashed_messages(with_categories=true) %} {% if messages %}
     </li>
     {% endfor %} {% if page < total_pages - 2 %}
     <li class="page-item disabled"><span class="page-link">...</span></li>
+    <li class="page-item">
+      <a
+        class="page-link"
+        href="{{ url_for('book', book_id=book_id, page=total_pages-1) }}"
+        style="color: #0f52ba"
+        >{{ total_pages-1 }}</a
+      >
+    </li>
     <li class="page-item">
       <a
         class="page-link"

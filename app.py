@@ -200,8 +200,14 @@ def index():
             for book in books
             if (
                 search_query in book.lower()
-                or (book in book_metadata and search_query in book_metadata[book]["title"].lower())
-                or (book in book_metadata and search_query in book_metadata[book]["author"].lower())
+                or (
+                    book in book_metadata
+                    and search_query in book_metadata[book]["title"].lower()
+                )
+                or (
+                    book in book_metadata
+                    and search_query in book_metadata[book]["author"].lower()
+                )
             )
         ]
 
@@ -226,35 +232,15 @@ def index():
         search_query=search_query,
     )
 
+
 @app.route("/book/<book_id>", methods=["GET", "POST"])
 def book(book_id):
     global annotations_df
     volume_notes_df = load_volume_notes()
 
     if request.method == "POST":
-        if "mark_as_state" in request.form:
-            mark_as_state = request.form["mark_as_state"]
-            book_path = os.path.join(settings["books_dir"], book_id)
-            pages = sorted(os.listdir(book_path))
-
-            for page_file in pages:
-                page = page_file  # Keep the .txt extension
-                if annotations_df[
-                    (annotations_df["ID"] == book_id) & (annotations_df["Page"] == page)
-                ].empty:
-                    new_annotation = pd.DataFrame(
-                        {"ID": [book_id], "Page": [page], "State": [mark_as_state]}
-                    )
-                    annotations_df = pd.concat(
-                        [annotations_df, new_annotation], ignore_index=True
-                    )
-
-            save_annotations()
-            return redirect(
-                url_for("book", book_id=book_id, page=request.args.get("page", 1))
-            )
-
-        elif "volume_notes" in request.form:
+        action = request.form.get("action")
+        if action == "save":
             notes = request.form["volume_notes"]
 
             # Remove any existing notes for this volume
@@ -269,78 +255,95 @@ def book(book_id):
 
             save_volume_notes(volume_notes_df)
 
-        elif "action" in request.form and request.form["action"] == "range_annotation":
+        elif action == "clear":
+            volume_notes_df = volume_notes_df[volume_notes_df["ID"] != book_id]
+            save_volume_notes(volume_notes_df)
+
+        elif action == "range_annotation":
             from_page = int(request.form["from_page"])
             to_page = int(request.form["to_page"])
             range_state = request.form["range_state"]
 
             book_path = os.path.join(settings["books_dir"], book_id)
             pages = sorted(os.listdir(book_path))
-
-            for page in pages:
-                page_number = int(
-                    page.split(".")[0]
-                )  # Assuming the page number is the filename without the extension
-                if from_page <= page_number <= to_page:
-                    if annotations_df[
-                        (annotations_df["ID"] == book_id)
-                        & (annotations_df["Page"] == page)
-                    ].empty:
-                        new_annotation = pd.DataFrame(
-                            {"ID": [book_id], "Page": [page], "State": [range_state]}
-                        )
-                        annotations_df = pd.concat(
-                            [annotations_df, new_annotation], ignore_index=True
-                        )
-                    else:
-                        annotations_df.loc[
-                            (annotations_df["ID"] == book_id)
-                            & (annotations_df["Page"] == page),
-                            "State",
-                        ] = range_state
-
-            save_annotations()
-            return redirect(
-                url_for("book", book_id=book_id, page=request.args.get("page", 1))
-            )
-
-        else:
-            page = request.form["page"]
-            state = request.form["state"]
-
-            current_annotation = annotations_df[
-                (annotations_df["ID"] == book_id) & (annotations_df["Page"] == page)
-            ]
-
-            if current_annotation.empty:
-                # Add the new annotation
-                new_annotation = pd.DataFrame(
-                    {"ID": [book_id], "Page": [page], "State": [state]}
-                )
-                annotations_df = pd.concat(
-                    [annotations_df, new_annotation], ignore_index=True
-                )
-
-            else:
-                current_state = current_annotation["State"].values[0]
-                if current_state == state:
-                    # Remove the existing annotation
-                    annotations_df = annotations_df[
-                        (annotations_df["ID"] != book_id)
-                        | (annotations_df["Page"] != page)
-                    ]
+            for page_file in pages[from_page - 1 : to_page]:
+                page = page_file
+                current_annotation = annotations_df[
+                    (annotations_df["ID"] == book_id) & (annotations_df["Page"] == page)
+                ]
+                if current_annotation.empty:
+                    new_annotation = pd.DataFrame(
+                        {"ID": [book_id], "Page": [page], "State": [range_state]}
+                    )
+                    annotations_df = pd.concat(
+                        [annotations_df, new_annotation], ignore_index=True
+                    )
                 else:
-                    # Update to the new state
                     annotations_df.loc[
                         (annotations_df["ID"] == book_id)
                         & (annotations_df["Page"] == page),
                         "State",
-                    ] = state
+                    ] = range_state
 
             save_annotations()
-            return redirect(
-                url_for("book", book_id=book_id, page=request.args.get("page", 1))
-            )
+
+        elif request.form.get("jump_to_unannotated"):
+            book_path = os.path.join(settings["books_dir"], book_id)
+            pages = sorted(os.listdir(book_path))
+            unannotated_pages = [
+                page
+                for page in pages
+                if annotations_df[
+                    (annotations_df["ID"] == book_id) & (annotations_df["Page"] == page)
+                ].empty
+            ]
+
+            if unannotated_pages:
+                first_unannotated_page_index = pages.index(unannotated_pages[0]) + 1
+                total_files_per_page = settings["files_per_page"]
+                page_number = (
+                    first_unannotated_page_index + total_files_per_page - 1
+                ) // total_files_per_page
+                return redirect(url_for("book", book_id=book_id, page=page_number))
+
+        else:
+            page = request.form.get("page")
+            state = request.form.get("state")
+
+            if page and state:
+                current_annotation = annotations_df[
+                    (annotations_df["ID"] == book_id) & (annotations_df["Page"] == page)
+                ]
+
+                if current_annotation.empty:
+                    # Add the new annotation
+                    new_annotation = pd.DataFrame(
+                        {"ID": [book_id], "Page": [page], "State": [state]}
+                    )
+                    annotations_df = pd.concat(
+                        [annotations_df, new_annotation], ignore_index=True
+                    )
+                else:
+                    current_state = current_annotation["State"].values[0]
+                    if current_state == state:
+                        # Remove the existing annotation
+                        annotations_df = annotations_df[
+                            (annotations_df["ID"] != book_id)
+                            | (annotations_df["Page"] != page)
+                        ]
+                    else:
+                        # Update to the new state
+                        annotations_df.loc[
+                            (annotations_df["ID"] == book_id)
+                            & (annotations_df["Page"] == page),
+                            "State",
+                        ] = state
+
+                save_annotations()
+
+        return redirect(
+            url_for("book", book_id=book_id, page=request.args.get("page", 1))
+        )
 
     page = int(request.args.get("page", 1))
     book_path = os.path.join(settings["books_dir"], book_id)

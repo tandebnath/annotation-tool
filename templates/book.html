@@ -24,25 +24,30 @@ get_flashed_messages(with_categories=true) %} {% if messages %}
     border-color: #0096ff;
     color: white; /* Adjust this if you need a different text color */
   }
+
   .mark-all-as-btn:hover {
     transform: scale(1.05);
     color: white;
   }
+
   .save-btn {
     background-color: #0096ff;
     border-color: #0096ff;
     color: white;
     margin-right: 1rem;
   }
+
   .save-btn:hover {
     transform: scale(1.05);
     color: white;
   }
+
   .clear-btn {
     background-color: #d70040;
     border-color: #d70040;
     color: white;
   }
+
   .clear-btn:hover {
     transform: scale(1.05);
     color: white;
@@ -123,6 +128,49 @@ get_flashed_messages(with_categories=true) %} {% if messages %}
       class="btn mark-all-as-btn"
     >
       Mark all as {{ mark_as_state }}
+    </button>
+  </form>
+</div>
+
+<div class="mb-3 d-flex justify-content-center">
+  <form method="post" id="range-annotation-form" class="d-flex">
+    <input
+      type="number"
+      name="from_page"
+      id="from_page"
+      class="form-control"
+      placeholder="From Page"
+      min="1"
+      style="width: 10rem; margin-right: 0.5rem"
+      required
+    />
+    <input
+      type="number"
+      name="to_page"
+      id="to_page"
+      class="form-control"
+      placeholder="To Page"
+      min="1"
+      style="width: 10rem; margin-right: 0.5rem"
+      required
+    />
+    <select
+      name="range_state"
+      id="range_state"
+      class="form-select"
+      style="margin-right: 0.5rem; border: 0; border-radius: 0.25rem"
+      required
+    >
+      <option value="" disabled selected>Select Label</option>
+      {% for state in states %}
+      <option value="{{ state }}">{{ state }}</option>
+      {% endfor %}
+    </select>
+    <button
+      type="submit"
+      class="btn save-btn"
+    >
+      Save
     </button>
   </form>
 </div>
@@ -271,7 +319,38 @@ get_flashed_messages(with_categories=true) %} {% if messages %}
         },
       });
     });
+
+    $("#range-annotation-form").on("submit", function (e) {
+      e.preventDefault();
+
+      var fromPage = $("#from_page").val();
+      var toPage = $("#to_page").val();
+      var rangeState = $("#range_state").val();
+
+      if (fromPage && toPage && rangeState) {
+        $.ajax({
+          type: "POST",
+          url: window.location.href,
+          data: {
+            action: "range_annotation",
+            from_page: fromPage,
+            to_page: toPage,
+            range_state: rangeState,
+          },
+          success: function (response) {
+            $("#from_page").val("");
+            $("#to_page").val("");
+            $("#range_state").val("");
+            location.reload(); // Reload to update the annotations
+          },
+          error: function (error) {
+            console.error("Error:", error);
+          },
+        });
+      }
+    });
   });
+
   document
     .getElementById("clear-button")
     .addEventListener("click", function () {

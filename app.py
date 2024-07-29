@@ -79,7 +79,12 @@ else:
 # Save annotations
 def save_annotations():
     try:
-        annotations_df.to_csv(settings["annotations_csv"], index=False)
+        if not os.path.exists(settings["annotations_csv"]):
+            annotations_df.to_csv(settings["annotations_csv"], index=False)
+        else:
+            annotations_df.to_csv(
+                settings["annotations_csv"], mode="a", header=False, index=False
+            )
     except PermissionError:
         flash(
             "You have the Annotations CSV file open in another application. Please close it before continuing to run this app.",
@@ -420,10 +425,6 @@ def book(book_id):
         mark_as_state=settings["mark_as_state"],
         volume_notes=volume_notes,
     )
-
-# @app.route("/annotations", methods=["GET"])
-# def get_annotations():
-#     return annotations_df.to_csv(index=False)
 
 if __name__ == "__main__":
     app.run(debug=True)

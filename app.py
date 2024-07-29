@@ -413,11 +413,14 @@ def book(book_id):
             if pd.isna(rights_date):
                 rights_date = ""
             else:
-                rights_date = (
-                    str(int(rights_date))
-                    if rights_date.is_integer()
-                    else str(rights_date)
-                )
+                try:
+                    rights_date = (
+                        str(int(rights_date))
+                        if isinstance(rights_date, (int, float))
+                        else str(rights_date)
+                    )
+                except (ValueError, TypeError):
+                    rights_date = str(rights_date)
 
             metadata = {
                 "title": title,

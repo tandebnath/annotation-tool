@@ -193,10 +193,18 @@ def index():
                 metadata = metadata_df[metadata_df["htid_old"] == book]
 
             if metadata is not None and not metadata.empty:
+                title = (
+                    metadata["title"].values[0] if "title" in metadata.columns else ""
+                )
+                author = (
+                    metadata["author"].values[0] if "author" in metadata.columns else ""
+                )
                 book_metadata[book] = {
-                    "title": metadata["title"].values[0],
-                    "author": metadata["author"].values[0],
+                    "title": title,
+                    "author": author,
                 }
+            else:
+                logging.warning(f"No valid metadata found for book {book}")
 
     # Filter books by search query
     if search_query:
@@ -385,7 +393,23 @@ def book(book_id):
             book_metadata = metadata_df[metadata_df["htid_old"] == book_id]
 
         if book_metadata is not None and not book_metadata.empty:
-            rights_date = book_metadata["rights_date_used"].values[0]
+            title = (
+                book_metadata["title"].values[0]
+                if "title" in book_metadata.columns
+                else ""
+            )
+            author = (
+                book_metadata["author"].values[0]
+                if "author" in book_metadata.columns
+                else ""
+            )
+            rights_date = ""
+
+            if "date" in book_metadata.columns:
+                rights_date = book_metadata["date"].values[0]
+            elif "rights_date_used" in book_metadata.columns:
+                rights_date = book_metadata["rights_date_used"].values[0]
+
             if pd.isna(rights_date):
                 rights_date = ""
             else:
@@ -394,11 +418,15 @@ def book(book_id):
                     if rights_date.is_integer()
                     else str(rights_date)
                 )
+
             metadata = {
-                "title": book_metadata["title"].values[0],
-                "author": book_metadata["author"].values[0],
+                "title": title,
+                "author": author,
                 "rights_date_used": rights_date,
             }
+            logging.info(f"Metadata for book {book_id}: {metadata}")
+        else:
+            logging.warning(f"No valid metadata found for book {book_id}")
 
     annotated_pages = annotations_df[annotations_df["ID"] == book_id].shape[0]
     book_completion = (annotated_pages / len(pages)) * 100 if len(pages) > 0 else 0
@@ -425,6 +453,7 @@ def book(book_id):
         mark_as_state=settings["mark_as_state"],
         volume_notes=volume_notes,
     )
+
 
 if __name__ == "__main__":
     app.run(debug=True)

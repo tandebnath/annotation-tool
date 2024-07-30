@@ -76,15 +76,20 @@ else:
     annotations_df = pd.DataFrame(columns=["ID", "Page", "State"])
 
 
-# Save annotations
 def save_annotations():
     try:
+        # Deduplicate annotations_df before saving
+        unique_annotations = annotations_df.drop_duplicates(subset=["ID", "Page"])
+
         if not os.path.exists(settings["annotations_csv"]):
-            annotations_df.to_csv(settings["annotations_csv"], index=False)
+            unique_annotations.to_csv(settings["annotations_csv"], index=False)
         else:
-            annotations_df.to_csv(
-                settings["annotations_csv"], mode="a", header=False, index=False
+            existing_annotations = pd.read_csv(settings["annotations_csv"])
+            combined_annotations = pd.concat([existing_annotations, unique_annotations])
+            combined_annotations = combined_annotations.drop_duplicates(
+                subset=["ID", "Page"]
             )
+            combined_annotations.to_csv(settings["annotations_csv"], index=False)
     except PermissionError:
         flash(
             "You have the Annotations CSV file open in another application. Please close it before continuing to run this app.",
@@ -434,11 +439,7 @@ def book(book_id):
                 rights_date = ""
             else:
                 try:
-                    rights_date = (
-                        str(int(rights_date))
-                        if isinstance(rights_date, (int, float))
-                        else str(rights_date)
-                    )
+                    rights_date = str(int(rights_date))
                 except (ValueError, TypeError):
                     rights_date = str(rights_date)
 

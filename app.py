@@ -300,6 +300,26 @@ def book(book_id):
 
             save_annotations()
 
+        elif request.form.get("mark_as_state"):
+            mark_as_state = request.form["mark_as_state"]
+            book_path = os.path.join(settings["books_dir"], book_id)
+            pages = sorted(os.listdir(book_path))
+
+            for page_file in pages:
+                page = page_file
+                current_annotation = annotations_df[
+                    (annotations_df["ID"] == book_id) & (annotations_df["Page"] == page)
+                ]
+                if current_annotation.empty:
+                    new_annotation = pd.DataFrame(
+                        {"ID": [book_id], "Page": [page], "State": [mark_as_state]}
+                    )
+                    annotations_df = pd.concat(
+                        [annotations_df, new_annotation], ignore_index=True
+                    )
+
+            save_annotations()
+
         elif request.form.get("jump_to_unannotated"):
             book_path = os.path.join(settings["books_dir"], book_id)
             pages = sorted(os.listdir(book_path))

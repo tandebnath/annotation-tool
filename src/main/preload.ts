@@ -5,7 +5,13 @@ export type Channels =
   | 'settings:save'
   | 'dialog:openDirectory'
   | 'dialog:openFile'
-  | 'getFoldersWithTxtFiles';
+  | 'getFoldersWithTxtFiles'
+  | 'getBookContents'
+  | 'saveAnnotation'
+  | 'loadAnnotations'
+  | 'saveVolumeNotes'
+  | 'loadVolumeNotes'
+  | 'clearVolumeNotes';
 
 const electronHandler = {
   ipcRenderer: {

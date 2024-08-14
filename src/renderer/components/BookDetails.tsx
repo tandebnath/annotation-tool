@@ -10,8 +10,19 @@ import {
   Select,
   MenuItem,
   InputLabel,
-  Pagination, // <-- Importing Pagination component here
+  Pagination,
 } from '@mui/material';
+
+interface Annotation {
+  bookId: any;
+  page: string;
+  state: string;
+}
+
+interface Page {
+  fileName: string;
+  content: string;
+}
 
 const BookDetails: React.FC = () => {
   const { bookId } = useParams<{ bookId: string }>();
@@ -27,32 +38,183 @@ const BookDetails: React.FC = () => {
   const [toPage, setToPage] = useState('');
   const [rangeState, setRangeState] = useState('');
   const [states, setStates] = useState<string[]>([]);
-  const [pages, setPages] = useState<{ name: string; content: string }[]>([]);
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const [pages, setPages] = useState<Page[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pagesPerAppPage, setPagesPerAppPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [pagesPerAppPage, setPagesPerAppPage] = useState(1);
+  const [defaultLabel, setDefaultLabel] = useState('');
 
   useEffect(() => {
+    loadSettings();
     loadBookDetails();
-  }, [bookId, currentPage]);
+    loadAnnotations();
+    loadVolumeNotes();
+  }, [bookId]);
+
+  useEffect(() => {
+    calculatePagination();
+  }, [pages, pagesPerAppPage]);
+
+  const loadSettings = async () => {
+    const settings = await window.electron.ipcRenderer.invoke('settings:load');
+    setStates(settings.labels || []);
+    setPagesPerAppPage(parseInt(settings.pagesPerAppPage, 10) || 1);
+    setDefaultLabel(settings.defaultLabel || '');
+  };
 
   const loadBookDetails = async () => {
-    const settings = await window.electron.ipcRenderer.invoke('settings:load');
-    const { booksDir, pagesPerAppPage: pagesPerPageSetting, labels } = settings;
+    setBookMetadata({
+      title: 'Sample Book',
+      author: 'Author Name',
+      year: '2024',
+    });
+    setBookCompletion(75);
 
-    setPagesPerAppPage(pagesPerPageSetting || 1);
-    setStates(labels || []);
-
-    const bookContents = await window.electron.ipcRenderer.invoke(
+    const loadedPages = await window.electron.ipcRenderer.invoke(
       'getBookContents',
-      `${booksDir}/${bookId}`,
+      bookId,
+    );
+    setPages(loadedPages);
+  };
+
+  const calculatePagination = () => {
+    const totalAppPages = Math.ceil(pages.length / pagesPerAppPage);
+    setTotalPages(totalAppPages);
+  };
+
+  const paginatePages = (page: number) => {
+    const startIndex = (page - 1) * pagesPerAppPage;
+    const endIndex = startIndex + pagesPerAppPage;
+    return pages.slice(startIndex, endIndex);
+  };
+
+  const loadAnnotations = async () => {
+    const loadedAnnotations = await window.electron.ipcRenderer.invoke(
+      'loadAnnotations',
+      bookId,
+    );
+    setAnnotations(loadedAnnotations);
+  };
+
+  const loadVolumeNotes = async () => {
+    const loadedNotes = await window.electron.ipcRenderer.invoke(
+      'loadVolumeNotes',
+      bookId,
+    );
+    setVolumeNotes(loadedNotes);
+  };
+
+  const handleAnnotationClick = async (page: string, state: string) => {
+    const existingAnnotation = annotations.find(
+      (annotation) => annotation.page === page && annotation.state === state,
     );
 
-    if (bookContents.length) {
-      setPages(bookContents);
-      const total = Math.ceil(bookContents.length / pagesPerAppPage);
-      setTotalPages(total);
+    if (existingAnnotation) {
+      const updatedAnnotations = annotations.filter(
+        (annotation) =>
+          !(annotation.page === page && annotation.state === state),
+      );
+      setAnnotations(updatedAnnotations);
+      await window.electron.ipcRenderer.invoke('saveAnnotation', {
+        bookId,
+        page,
+        state: '',
+      });
+    } else {
+      const updatedAnnotations = annotations.filter(
+        (annotation) => annotation.page !== page,
+      );
+      updatedAnnotations.push({ bookId, page, state });
+      setAnnotations(updatedAnnotations);
+      await window.electron.ipcRenderer.invoke('saveAnnotation', {
+        bookId,
+        page,
+        state,
+      });
     }
+  };
+
+  const isStateActive = (page: string, state: string) => {
+    return annotations.some(
+      (annotation) => annotation.page === page && annotation.state === state,
+    );
+  };
+
+  const handleSaveNotes = async () => {
+    await window.electron.ipcRenderer.invoke('saveVolumeNotes', {
+      bookId,
+      note: volumeNotes,
+    });
+    alert('Volume note saved!');
+  };
+
+  const handleClearNotes = async () => {
+    await window.electron.ipcRenderer.invoke('clearVolumeNotes', bookId);
+    setVolumeNotes('');
+    alert('Volume note cleared!');
+  };
+
+  const handleRangeSubmit = async () => {
+    const from = parseInt(fromPage, 10);
+    const to = parseInt(toPage, 10);
+
+    if (!from || !to || !rangeState) {
+      alert('Please select all values');
+      return;
+    }
+
+    if (from > to) {
+      alert('The "From Page" cannot be greater than "To Page".');
+      return;
+    }
+
+    const pagesInRange = pages
+      .filter(
+        (page) =>
+          parseInt(page.fileName.replace('.txt', ''), 10) >= from &&
+          parseInt(page.fileName.replace('.txt', ''), 10) <= to,
+      )
+      .map((page) => page.fileName);
+
+    const newAnnotations = pagesInRange.map((page) => ({
+      bookId,
+      page,
+      state: rangeState,
+    }));
+
+    const updatedAnnotations = [...annotations, ...newAnnotations];
+    setAnnotations(updatedAnnotations);
+
+    for (const annotation of newAnnotations) {
+      await window.electron.ipcRenderer.invoke('saveAnnotation', annotation);
+    }
+
+    alert(`Pages from ${fromPage} to ${toPage} marked as ${rangeState}.`);
+  };
+
+  const handleMarkAllAs = async () => {
+    const unannotatedPages = pages.filter(
+      (page) =>
+        !annotations.some((annotation) => annotation.page === page.fileName),
+    );
+
+    const newAnnotations = unannotatedPages.map((page) => ({
+      bookId,
+      page: page.fileName,
+      state: defaultLabel,
+    }));
+
+    const updatedAnnotations = [...annotations, ...newAnnotations];
+    setAnnotations(updatedAnnotations);
+
+    for (const annotation of newAnnotations) {
+      await window.electron.ipcRenderer.invoke('saveAnnotation', annotation);
+    }
+  };
+
+  const handleJumpToUnannotated = () => {
+    alert('Jumped to next unannotated work');
   };
 
   const handlePageChange = (
@@ -62,24 +224,15 @@ const BookDetails: React.FC = () => {
     setCurrentPage(value);
   };
 
-  const handleSaveNotes = () => {
-    alert('Notes saved!');
-  };
-
-  const handleClearNotes = () => {
-    setVolumeNotes('');
-  };
-
-  const handleRangeSubmit = () => {
-    alert('Range annotation saved!');
-  };
-
-  const handleMarkAllAs = (state: string) => {
-    alert(`All marked as ${state}`);
-  };
-
-  const handleJumpToUnannotated = () => {
-    alert('Jumped to next unannotated work');
+  const handleGoToPage = () => {
+    const pageInput = (document.getElementById('pageInput') as HTMLInputElement)
+      .value;
+    const page = parseInt(pageInput, 10);
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    } else {
+      alert(`Please enter a valid page number between 1 and ${totalPages}.`);
+    }
   };
 
   return (
@@ -100,6 +253,15 @@ const BookDetails: React.FC = () => {
         </Typography>
         <Typography>
           <strong>ID:</strong> {bookId}
+        </Typography>
+        <Typography>
+          <strong>Title:</strong> {bookMetadata.title}
+        </Typography>
+        <Typography>
+          <strong>Author:</strong> {bookMetadata.author}
+        </Typography>
+        <Typography>
+          <strong>Year:</strong> {bookMetadata.year}
         </Typography>
       </Box>
 
@@ -210,12 +372,8 @@ const BookDetails: React.FC = () => {
       <Box
         sx={{ marginBottom: '2rem', display: 'flex', justifyContent: 'center' }}
       >
-        <Button
-          variant="contained"
-          color="warning"
-          onClick={() => handleMarkAllAs('Read')}
-        >
-          Mark all as Read
+        <Button variant="contained" color="warning" onClick={handleMarkAllAs}>
+          Mark all as {defaultLabel}
         </Button>
       </Box>
 
@@ -233,60 +391,47 @@ const BookDetails: React.FC = () => {
         </Button>
       </Box>
 
-      {/* Pagination logic and display */}
       <Box sx={{ marginBottom: '2rem' }}>
-        {pages
-          .slice(
-            (currentPage - 1) * pagesPerAppPage,
-            currentPage * pagesPerAppPage,
-          )
-          .map((page, index) => (
+        {paginatePages(currentPage).map((page, index) => (
+          <Box
+            key={index}
+            sx={{ display: 'flex', alignItems: 'start', marginBottom: '1rem' }}
+          >
             <Box
-              key={index}
               sx={{
-                display: 'flex',
-                alignItems: 'start',
-                marginBottom: '1rem',
+                backgroundColor: 'white',
+                color: '#d70040',
+                fontWeight: 'bold',
+                padding: '0.5rem',
+                borderRadius: '4px',
+                marginRight: '1rem',
               }}
             >
-              <Box
-                sx={{
-                  backgroundColor: 'white',
-                  color: '#d70040',
-                  fontWeight: 'bold',
-                  padding: '0.5rem',
-                  borderRadius: '4px',
-                  marginRight: '1rem',
-                }}
-              >
-                {page.name.replace('.txt', '')}
-              </Box>
-              <Box sx={{ flexGrow: 1 }}>
-                <pre>{page.content}</pre>
-                <Box sx={{ display: 'flex' }}>
-                  {states.map((state, index) => (
-                    <Button
-                      key={index}
-                      variant="contained"
-                      sx={{
-                        backgroundColor: '#E5E4E2',
-                        color: 'black',
-                        marginRight: '0.5rem',
-                        '&.active': {
-                          backgroundColor: '#AFE1AF',
-                        },
-                      }}
-                      onClick={() => {
-                        // Handle state change for this page
-                      }}
-                    >
-                      {state}
-                    </Button>
-                  ))}
-                </Box>
+              Page {parseInt(page.fileName.replace('.txt', ''), 10)}
+            </Box>
+            <Box sx={{ flexGrow: 1 }}>
+              <pre>{page.content}</pre>
+              <Box sx={{ display: 'flex' }}>
+                {states.map((state, idx) => (
+                  <Button
+                    key={idx}
+                    variant="contained"
+                    sx={{
+                      backgroundColor: isStateActive(page.fileName, state)
+                        ? '#AFE1AF'
+                        : '#E5E4E2',
+                      color: 'black',
+                      marginRight: '0.5rem',
+                    }}
+                    onClick={() => handleAnnotationClick(page.fileName, state)}
+                  >
+                    {state}
+                  </Button>
+                ))}
               </Box>
             </Box>
-          ))}
+          </Box>
+        ))}
       </Box>
 
       <Pagination
@@ -295,8 +440,23 @@ const BookDetails: React.FC = () => {
         onChange={handlePageChange}
         variant="outlined"
         shape="rounded"
-        sx={{ display: 'flex', justifyContent: 'center', marginTop: '2rem' }}
+        sx={{ display: 'flex', justifyContent: 'center', marginTop: '7.5rem' }}
       />
+
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', marginTop: '2rem' }}
+      >
+        <TextField
+          id="pageInput"
+          type="number"
+          InputProps={{ inputProps: { min: 1, max: totalPages } }}
+          placeholder="Enter Page No."
+          sx={{ width: '10rem', marginRight: '0.5rem', textAlign: 'center' }}
+        />
+        <Button variant="contained" onClick={handleGoToPage}>
+          Go to Page
+        </Button>
+      </Box>
     </Container>
   );
 };

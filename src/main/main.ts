@@ -71,23 +71,188 @@ ipcMain.handle('getFoldersWithTxtFiles', async (_event, booksDir) => {
   return foldersWithTxtFiles.map((folder) => path.basename(folder));
 });
 
-// IPC handler to get the contents of .txt files within a folder
-ipcMain.handle('getBookContents', async (_event, bookDir) => {
-  const fullPath = path.join(bookDir);
+// IPC handler to get the contents of .txt files within a folder aka book pages
+ipcMain.handle('getBookContents', async (_event, bookId) => {
+  const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+  const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
 
-  if (!fs.existsSync(fullPath)) {
+  const booksDir = settings.booksDir;
+  const bookFolderPath = path.join(booksDir, bookId);
+
+  if (!fs.existsSync(bookFolderPath)) {
     return [];
   }
 
-  const txtFiles = fs
-    .readdirSync(fullPath)
-    .filter((file) => file.endsWith('.txt'))
-    .map((file) => ({
-      name: file,
-      content: fs.readFileSync(path.join(fullPath, file), 'utf-8'),
-    }));
+  const files = fs.readdirSync(bookFolderPath).filter((file) => file.endsWith('.txt'));
 
-  return txtFiles;
+  const pages = files.map((file) => {
+    const content = fs.readFileSync(path.join(bookFolderPath, file), 'utf-8');
+    return {
+      fileName: file, // The .txt file name (e.g., "001.txt")
+      content: content, // The content of the .txt file
+    };
+  });
+
+  return pages;
+});
+
+
+ipcMain.handle('saveAnnotation', async (_event, { bookId, page, state }) => {
+  const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+  const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+
+  const annotationsCsvPath = settings.annotationsCsv;
+  if (!annotationsCsvPath) {
+    throw new Error('Annotations CSV path is not set.');
+  }
+
+  let annotations: { csvBookId: string; csvPage: string; csvState: string }[] =
+    [];
+
+  if (fs.existsSync(annotationsCsvPath)) {
+    annotations = fs
+      .readFileSync(annotationsCsvPath, 'utf-8')
+      .split('\n')
+      .filter((line) => line.trim() !== '')
+      .map((line) => {
+        const [csvBookId, csvPage, csvState] = line.split(',');
+        return { csvBookId, csvPage, csvState };
+      });
+  }
+
+  // Update the annotation if it exists, otherwise add a new one
+  const existingAnnotation = annotations.find(
+    (annotation) =>
+      annotation.csvBookId === bookId && annotation.csvPage === page,
+  );
+
+  if (existingAnnotation) {
+    existingAnnotation.csvState = state;
+  } else {
+    annotations.push({ csvBookId: bookId, csvPage: page, csvState: state });
+  }
+
+  // Write back to the CSV
+  fs.writeFileSync(
+    annotationsCsvPath,
+    annotations
+      .map(
+        ({ csvBookId, csvPage, csvState }) =>
+          `${csvBookId},${csvPage},${csvState}`,
+      )
+      .join('\n'),
+  );
+
+  return 'Annotation saved successfully!';
+});
+
+ipcMain.handle('loadAnnotations', async (_event, bookId) => {
+  const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+  const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+
+  const annotationsCsvPath = settings.annotationsCsv;
+  if (!annotationsCsvPath) {
+    throw new Error('Annotations CSV path is not set.');
+  }
+
+  if (!fs.existsSync(annotationsCsvPath)) {
+    return [];
+  }
+
+  const annotations = fs
+    .readFileSync(annotationsCsvPath, 'utf-8')
+    .split('\n')
+    .filter((line) => line.trim() !== '')
+    .map((line) => {
+      const [csvBookId, csvPage, csvState] = line.split(',');
+      return { bookId: csvBookId, page: csvPage, state: csvState };
+    });
+
+  return annotations.filter((annotation) => annotation.bookId === bookId);
+});
+
+/*
+
+-------- Volume Notes Handlers ----------
+
+*/
+
+// IPC handler to load volume notes
+ipcMain.handle('loadVolumeNotes', async (_event, bookId) => {
+  const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+  const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+
+  const volumeNotesCsvPath = settings.volumeNotesCsv;
+  if (!volumeNotesCsvPath) {
+    throw new Error('Volume notes CSV path is not set.');
+  }
+
+  if (!fs.existsSync(volumeNotesCsvPath)) {
+    return '';
+  }
+
+  const notes = fs
+    .readFileSync(volumeNotesCsvPath, 'utf-8')
+    .split('\n')
+    .filter((line) => line.trim() !== '')
+    .map((line) => {
+      const [csvBookId, note] = line.split(',');
+      return { bookId: csvBookId, note };
+    });
+
+  const note = notes.find((n) => n.bookId === bookId);
+  return note ? note.note : '';
+});
+
+// IPC handler to save volume notes
+ipcMain.handle('saveVolumeNotes', async (_event, { bookId, note }) => {
+  const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+  const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+
+  const volumeNotesCsvPath = settings.volumeNotesCsv;
+  if (!volumeNotesCsvPath) {
+    throw new Error('Volume notes CSV path is not set.');
+  }
+
+  let notes: any = [];
+  if (fs.existsSync(volumeNotesCsvPath)) {
+    notes = fs
+      .readFileSync(volumeNotesCsvPath, 'utf-8')
+      .split('\n')
+      .filter((line) => line.trim() !== '');
+  }
+
+  const updatedNotes = notes.filter((line: any) => !line.startsWith(bookId));
+  if (note.trim()) {
+    updatedNotes.push(`${bookId},${note}`);
+  }
+
+  fs.writeFileSync(volumeNotesCsvPath, updatedNotes.join('\n'));
+  return 'Volume note saved successfully!';
+});
+
+// IPC handler to clear volume notes
+ipcMain.handle('clearVolumeNotes', async (_event, bookId) => {
+  const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+  const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+
+  const volumeNotesCsvPath = settings.volumeNotesCsv;
+  if (!volumeNotesCsvPath) {
+    throw new Error('Volume notes CSV path is not set.');
+  }
+
+  if (!fs.existsSync(volumeNotesCsvPath)) {
+    return 'No volume notes found to clear.';
+  }
+
+  const notes = fs
+    .readFileSync(volumeNotesCsvPath, 'utf-8')
+    .split('\n')
+    .filter((line) => line.trim() !== '')
+    .filter((line) => !line.startsWith(bookId));
+
+  fs.writeFileSync(volumeNotesCsvPath, notes.join('\n'));
+  return 'Volume note cleared successfully!';
 });
 
 if (process.env.NODE_ENV === 'production') {

@@ -417,7 +417,7 @@ const BookDetails: React.FC = () => {
         <React.Fragment key={index}>
           <Card sx={{ marginBottom: '2rem' }}>
             <CardContent>
-              <Typography variant="h6">
+              <Typography variant="h6" sx={{ color: '#d70040' }}>
                 Page {parseInt(page.fileName.replace('.txt', ''), 10)}
               </Typography>
               <pre>{page.content}</pre>

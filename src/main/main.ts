@@ -52,23 +52,55 @@ ipcMain.handle('settings:load', async () => {
   }
 });
 
-// IPC handler to get folders with .txt files
+// IPC handler to get folders with .txt files and their completion percentages
 ipcMain.handle('getFoldersWithTxtFiles', async (_event, booksDir) => {
   if (!fs.existsSync(booksDir)) {
     return [];
   }
+
+  const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+  const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+  const annotationsCsvPath = settings.annotationsCsv;
 
   const directories = fs
     .readdirSync(booksDir, { withFileTypes: true })
     .filter((dirent) => dirent.isDirectory())
     .map((dirent) => path.join(booksDir, dirent.name));
 
-  const foldersWithTxtFiles = directories.filter((dir) => {
-    const files = fs.readdirSync(dir);
-    return files.some((file) => file.endsWith('.txt'));
+  const foldersWithCompletion = directories.map((dir) => {
+    const folderName = path.basename(dir);
+    const txtFiles = fs
+      .readdirSync(dir)
+      .filter((file) => file.endsWith('.txt'));
+
+    let annotatedPages = 0;
+
+    if (fs.existsSync(annotationsCsvPath)) {
+      const annotations = fs
+        .readFileSync(annotationsCsvPath, 'utf-8')
+        .split('\n')
+        .filter((line) => line.trim() !== '');
+
+      const annotationSet = new Set();
+
+      annotations.forEach((line) => {
+        const [id, page] = line.split(',');
+        if (id === folderName && txtFiles.includes(page.trim())) {
+          annotationSet.add(page.trim());
+        }
+      });
+
+      annotatedPages = annotationSet.size;
+    }
+
+    const completion = txtFiles.length
+      ? Math.round((annotatedPages / txtFiles.length) * 100)
+      : 0;
+
+    return { folder: folderName, completion };
   });
 
-  return foldersWithTxtFiles.map((folder) => path.basename(folder));
+  return foldersWithCompletion;
 });
 
 // IPC handler to get the contents of .txt files within a folder aka book pages
@@ -83,7 +115,9 @@ ipcMain.handle('getBookContents', async (_event, bookId) => {
     return [];
   }
 
-  const files = fs.readdirSync(bookFolderPath).filter((file) => file.endsWith('.txt'));
+  const files = fs
+    .readdirSync(bookFolderPath)
+    .filter((file) => file.endsWith('.txt'));
 
   const pages = files.map((file) => {
     const content = fs.readFileSync(path.join(bookFolderPath, file), 'utf-8');
@@ -95,7 +129,6 @@ ipcMain.handle('getBookContents', async (_event, bookId) => {
 
   return pages;
 });
-
 
 ipcMain.handle('saveAnnotation', async (_event, { bookId, page, state }) => {
   const settingsPath = path.join(app.getPath('userData'), 'settings.json');

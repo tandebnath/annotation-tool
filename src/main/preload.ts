@@ -5,6 +5,7 @@ export type Channels =
   | 'settings:save'
   | 'dialog:openDirectory'
   | 'dialog:openFile'
+  | 'getBookPageCount'
   | 'getFoldersWithTxtFiles'
   | 'getBookContents'
   | 'saveAnnotation'

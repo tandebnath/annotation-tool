@@ -1,16 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import {
   Container,
-  Button,
   Box,
   Typography,
   Pagination,
   TextField,
+  Button,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
+interface Book {
+  folder: string;
+  completion: number;
+}
+
 const BookList: React.FC = () => {
-  const [books, setBooks] = useState<string[]>([]);
+  const [books, setBooks] = useState<Book[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
   const [maxPage, setMaxPage] = useState(1);
@@ -27,12 +32,14 @@ const BookList: React.FC = () => {
     const booksPerPage = parseInt(settings.booksPerPage, 10) || 10;
 
     if (booksDir) {
-      const folders = await window.electron.ipcRenderer.invoke(
+      const foldersWithCompletion = await window.electron.ipcRenderer.invoke(
         'getFoldersWithTxtFiles',
         booksDir,
       );
 
-      const totalBooks = folders.length;
+      console.log(foldersWithCompletion); // Debug to verify the data
+
+      const totalBooks = foldersWithCompletion.length;
       const totalPages = Math.ceil(totalBooks / booksPerPage);
 
       setTotalPages(totalPages);
@@ -40,7 +47,10 @@ const BookList: React.FC = () => {
 
       const startIndex = (page - 1) * booksPerPage;
       const endIndex = Math.min(startIndex + booksPerPage, totalBooks);
-      const paginatedFolders = folders.slice(startIndex, endIndex);
+      const paginatedFolders = foldersWithCompletion.slice(
+        startIndex,
+        endIndex,
+      );
 
       setBooks(paginatedFolders);
     } else {
@@ -89,9 +99,12 @@ const BookList: React.FC = () => {
             marginTop: '2rem',
           }}
         >
-          {books.map((folder, index) => {
+          {books.map(({ folder, completion }, index) => {
             const truncatedFolderName =
               folder.length > 20 ? `${folder.substring(0, 17)}...` : folder;
+
+            // Generate the linear gradient based on the completion percentage
+            const backgroundGradient = `linear-gradient(to top, #AFE1AF ${completion}%, #FCF5E5 0%)`;
 
             return (
               <Box
@@ -144,7 +157,7 @@ const BookList: React.FC = () => {
                       height: '12.5rem',
                       borderTopRightRadius: '0.1875rem',
                       borderBottomRightRadius: '0.1875rem',
-                      background: '#fcf5e5',
+                      background: backgroundGradient,
                       transform: 'translateZ(-2.5rem)',
                       boxShadow: '-0.625rem 0 3.125rem 0.625rem lightgray',
                     },
@@ -152,7 +165,7 @@ const BookList: React.FC = () => {
                 >
                   <Box
                     sx={{
-                      background: 'linear-gradient(to top, #AFE1AF, #FCF5E5)',
+                      background: backgroundGradient,
                     }}
                   >
                     <Box

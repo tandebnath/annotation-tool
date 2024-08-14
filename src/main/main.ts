@@ -71,6 +71,25 @@ ipcMain.handle('getFoldersWithTxtFiles', async (_event, booksDir) => {
   return foldersWithTxtFiles.map((folder) => path.basename(folder));
 });
 
+// IPC handler to get the contents of .txt files within a folder
+ipcMain.handle('getBookContents', async (_event, bookDir) => {
+  const fullPath = path.join(bookDir);
+
+  if (!fs.existsSync(fullPath)) {
+    return [];
+  }
+
+  const txtFiles = fs
+    .readdirSync(fullPath)
+    .filter((file) => file.endsWith('.txt'))
+    .map((file) => ({
+      name: file,
+      content: fs.readFileSync(path.join(fullPath, file), 'utf-8'),
+    }));
+
+  return txtFiles;
+});
+
 if (process.env.NODE_ENV === 'production') {
   const sourceMapSupport = require('source-map-support');
   sourceMapSupport.install();

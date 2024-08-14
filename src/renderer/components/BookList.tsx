@@ -7,12 +7,15 @@ import {
   Pagination,
   TextField,
 } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 
 const BookList: React.FC = () => {
   const [books, setBooks] = useState<string[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
   const [maxPage, setMaxPage] = useState(1);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadBooks(currentPage);
@@ -63,6 +66,10 @@ const BookList: React.FC = () => {
     }
   };
 
+  const handleBookClick = (folder: string) => {
+    navigate(`/book/${folder}`);
+  };
+
   return (
     <Container
       sx={{ padding: '2rem 5rem', fontFamily: 'Montserrat, sans-serif' }}
@@ -98,6 +105,7 @@ const BookList: React.FC = () => {
                   perspective: '25rem',
                   cursor: 'pointer',
                 }}
+                onClick={() => handleBookClick(folder)} // Navigate to the book details page
               >
                 <Box
                   sx={{

@@ -11,6 +11,10 @@ import {
   MenuItem,
   InputLabel,
   Pagination,
+  Divider,
+  Card,
+  CardContent,
+  CardActions,
 } from '@mui/material';
 
 interface Annotation {
@@ -54,7 +58,8 @@ const BookDetails: React.FC = () => {
 
   useEffect(() => {
     calculatePagination();
-  }, [pages, pagesPerAppPage]);
+    calculateBookCompletion();
+  }, [pages, annotations, pagesPerAppPage]);
 
   const loadSettings = async () => {
     const settings = await window.electron.ipcRenderer.invoke('settings:load');
@@ -69,7 +74,6 @@ const BookDetails: React.FC = () => {
       author: 'Author Name',
       year: '2024',
     });
-    setBookCompletion(75);
 
     const loadedPages = await window.electron.ipcRenderer.invoke(
       'getBookContents',
@@ -81,6 +85,13 @@ const BookDetails: React.FC = () => {
   const calculatePagination = () => {
     const totalAppPages = Math.ceil(pages.length / pagesPerAppPage);
     setTotalPages(totalAppPages);
+  };
+
+  const calculateBookCompletion = () => {
+    const totalPages = pages.length;
+    const labeledPages = annotations.length;
+    const completionPercentage = Math.round((labeledPages / totalPages) * 100);
+    setBookCompletion(completionPercentage);
   };
 
   const paginatePages = (page: number) => {
@@ -155,7 +166,9 @@ const BookDetails: React.FC = () => {
     alert('Volume note cleared!');
   };
 
-  const handleRangeSubmit = async () => {
+  const handleRangeSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
     const from = parseInt(fromPage, 10);
     const to = parseInt(toPage, 10);
 
@@ -214,7 +227,15 @@ const BookDetails: React.FC = () => {
   };
 
   const handleJumpToUnannotated = () => {
-    alert('Jumped to next unannotated work');
+    const firstUnannotatedPage = pages.findIndex(
+      (page) =>
+        !annotations.some((annotation) => annotation.page === page.fileName),
+    );
+
+    if (firstUnannotatedPage !== -1) {
+      const newPage = Math.ceil((firstUnannotatedPage + 1) / pagesPerAppPage);
+      setCurrentPage(newPage);
+    }
   };
 
   const handlePageChange = (
@@ -386,53 +407,43 @@ const BookDetails: React.FC = () => {
           variant="contained"
           color="primary"
           onClick={handleJumpToUnannotated}
+          disabled={bookCompletion === 100}
         >
           Jump to Next Unannotated Work
         </Button>
       </Box>
 
-      <Box sx={{ marginBottom: '2rem' }}>
-        {paginatePages(currentPage).map((page, index) => (
-          <Box
-            key={index}
-            sx={{ display: 'flex', alignItems: 'start', marginBottom: '1rem' }}
-          >
-            <Box
-              sx={{
-                backgroundColor: 'white',
-                color: '#d70040',
-                fontWeight: 'bold',
-                padding: '0.5rem',
-                borderRadius: '4px',
-                marginRight: '1rem',
-              }}
-            >
-              Page {parseInt(page.fileName.replace('.txt', ''), 10)}
-            </Box>
-            <Box sx={{ flexGrow: 1 }}>
+      {paginatePages(currentPage).map((page, index) => (
+        <React.Fragment key={index}>
+          <Card sx={{ marginBottom: '2rem' }}>
+            <CardContent>
+              <Typography variant="h6">
+                Page {parseInt(page.fileName.replace('.txt', ''), 10)}
+              </Typography>
               <pre>{page.content}</pre>
-              <Box sx={{ display: 'flex' }}>
-                {states.map((state, idx) => (
-                  <Button
-                    key={idx}
-                    variant="contained"
-                    sx={{
-                      backgroundColor: isStateActive(page.fileName, state)
-                        ? '#AFE1AF'
-                        : '#E5E4E2',
-                      color: 'black',
-                      marginRight: '0.5rem',
-                    }}
-                    onClick={() => handleAnnotationClick(page.fileName, state)}
-                  >
-                    {state}
-                  </Button>
-                ))}
-              </Box>
-            </Box>
-          </Box>
-        ))}
-      </Box>
+            </CardContent>
+            <CardActions>
+              {states.map((state, idx) => (
+                <Button
+                  key={idx}
+                  variant="contained"
+                  sx={{
+                    backgroundColor: isStateActive(page.fileName, state)
+                      ? '#AFE1AF'
+                      : '#E5E4E2',
+                    color: 'black',
+                    marginRight: '0.5rem',
+                  }}
+                  onClick={() => handleAnnotationClick(page.fileName, state)}
+                >
+                  {state}
+                </Button>
+              ))}
+            </CardActions>
+          </Card>
+          {index % 2 !== 0 && <Divider sx={{ marginBottom: '2rem' }} />}
+        </React.Fragment>
+      ))}
 
       <Pagination
         count={totalPages}

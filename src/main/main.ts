@@ -6,6 +6,7 @@ import fs from 'fs';
 
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
+import csvParser from 'csv-parser';
 
 class AppUpdater {
   constructor() {
@@ -49,6 +50,35 @@ ipcMain.handle('settings:load', async () => {
     return settings;
   } else {
     return {};
+  }
+});
+
+ipcMain.handle('getCsvColumns', async (_event, csvFilePath) => {
+  try {
+    const columns: any = [];
+
+    if (!fs.existsSync(csvFilePath)) {
+      throw new Error('CSV file does not exist');
+    }
+
+    const fileStream = fs.createReadStream(csvFilePath);
+    const parser = csvParser();
+
+    fileStream.pipe(parser);
+
+    return new Promise((resolve, reject) => {
+      parser.on('headers', (headers) => {
+        columns.push(...headers);
+        resolve(columns);
+      });
+
+      parser.on('error', (error) => {
+        reject(error);
+      });
+    });
+  } catch (error) {
+    console.error('Error extracting columns:', error);
+    throw error;
   }
 });
 

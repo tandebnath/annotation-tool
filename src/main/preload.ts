@@ -13,7 +13,8 @@ export type Channels =
   | 'saveVolumeNotes'
   | 'loadVolumeNotes'
   | 'clearVolumeNotes'
-  | 'getCsvColumns';
+  | 'getCsvColumns'
+  | 'loadMetadata';
 
 const electronHandler = {
   ipcRenderer: {

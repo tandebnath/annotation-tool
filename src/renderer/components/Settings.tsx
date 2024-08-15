@@ -9,6 +9,10 @@ import {
   MenuItem,
   Switch,
   FormControlLabel,
+  Dialog,
+  CircularProgress,
+  DialogTitle,
+  DialogContent,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
@@ -28,25 +32,45 @@ const Settings: React.FC = () => {
   const [metadataFields, setMetadataFields] = useState<
     { column: string; label: string; displayOnCover: boolean }[]
   >([]);
+  const [isExtracting, setIsExtracting] = useState(false);
 
   const navigate = useNavigate();
 
   useEffect(() => {
-    window.electron.ipcRenderer.invoke('settings:load').then((settings) => {
-      if (settings) {
-        setBooksDir(settings.booksDir || '');
-        setAnnotationsCsv(settings.annotationsCsv || '');
-        setVolumeNotesCsv(settings.volumeNotesCsv || '');
-        setBooksPerPage(settings.booksPerPage || '');
-        setPagesPerAppPage(settings.pagesPerAppPage || '');
-        setLabels(settings.labels || []);
-        setDefaultLabel(settings.defaultLabel || '');
-        setIsMetadataAvailable(settings.isMetadataAvailable || false);
-        setMetadataFilePath(settings.metadataFilePath || '');
-        setBookIdColumn(settings.bookIdColumn || '');
-        setMetadataFields(settings.metadataFields || []);
-      }
-    });
+    window.electron.ipcRenderer
+      .invoke('settings:load')
+      .then(async (settings) => {
+        if (settings) {
+          setBooksDir(settings.booksDir || '');
+          setAnnotationsCsv(settings.annotationsCsv || '');
+          setVolumeNotesCsv(settings.volumeNotesCsv || '');
+          setBooksPerPage(settings.booksPerPage || '');
+          setPagesPerAppPage(settings.pagesPerAppPage || '');
+          setLabels(settings.labels || []);
+          setDefaultLabel(settings.defaultLabel || '');
+          setIsMetadataAvailable(settings.isMetadataAvailable || false);
+          setMetadataFilePath(settings.metadataFilePath || '');
+          setBookIdColumn(settings.bookIdColumn || '');
+          setMetadataFields(settings.metadataFields || []);
+
+          if (
+            settings.isMetadataAvailable &&
+            settings.metadataFilePath &&
+            !csvColumns.length
+          ) {
+            try {
+              console.log('Loading metadata columns from saved file...');
+              const columns = await window.electron.ipcRenderer.invoke(
+                'getCsvColumns',
+                settings.metadataFilePath,
+              );
+              setCsvColumns(columns);
+            } catch (error) {
+              console.error('Error loading metadata columns:', error);
+            }
+          }
+        }
+      });
   }, []);
 
   const handleSaveSettings = () => {
@@ -64,6 +88,12 @@ const Settings: React.FC = () => {
         bookIdColumn,
         metadataFields,
       };
+
+      if (isMetadataAvailable) {
+        // Save additional metadata settings if metadata is enabled
+        settings.bookIdColumn = bookIdColumn;
+        settings.metadataFields = metadataFields; // Save the metadata fields and labels
+      }
 
       window.electron.ipcRenderer.invoke('settings:save', settings).then(() => {
         alert('Settings saved successfully!');

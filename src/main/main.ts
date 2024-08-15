@@ -133,6 +133,35 @@ ipcMain.handle('getFoldersWithTxtFiles', async (_event, booksDir) => {
   return foldersWithCompletion;
 });
 
+ipcMain.handle('loadMetadata', async () => {
+  const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+  const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+
+  if (settings.metadataFilePath && fs.existsSync(settings.metadataFilePath)) {
+    return new Promise((resolve, reject) => {
+      const metadataJson: any = {};
+      const bookIdColumn = settings.bookIdColumn || '';
+
+      fs.createReadStream(settings.metadataFilePath)
+        .pipe(csvParser())
+        .on('data', (row) => {
+          const bookId = row[bookIdColumn];
+          if (bookId) {
+            metadataJson[bookId] = row;
+          }
+        })
+        .on('end', () => {
+          resolve(metadataJson);
+        })
+        .on('error', (error) => {
+          reject(error);
+        });
+    });
+  } else {
+    return {}; // No metadata available
+  }
+});
+
 // IPC handler to get the contents of .txt files within a folder aka book pages
 ipcMain.handle('getBookContents', async (_event, bookId) => {
   const settingsPath = path.join(app.getPath('userData'), 'settings.json');

@@ -6,12 +6,14 @@ import {
   Pagination,
   TextField,
   Button,
+  Tooltip,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
 interface Book {
   folder: string;
   completion: number;
+  metadata?: Record<string, string>;
 }
 
 const BookList: React.FC = () => {
@@ -19,12 +21,19 @@ const BookList: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
   const [maxPage, setMaxPage] = useState(1);
+  const [settings, setSettings] = useState<any>({});
 
   const navigate = useNavigate();
 
   useEffect(() => {
+    loadSettings();
     loadBooks(currentPage);
   }, [currentPage]);
+
+  const loadSettings = async () => {
+    const settings = await window.electron.ipcRenderer.invoke('settings:load');
+    setSettings(settings);
+  };
 
   const loadBooks = async (page: number) => {
     const settings = await window.electron.ipcRenderer.invoke('settings:load');
@@ -37,7 +46,10 @@ const BookList: React.FC = () => {
         booksDir,
       );
 
-      console.log(foldersWithCompletion); // Debug to verify the data
+      let metadataJson: any = {};
+      if (settings.isMetadataAvailable) {
+        metadataJson = await window.electron.ipcRenderer.invoke('loadMetadata');
+      }
 
       const totalBooks = foldersWithCompletion.length;
       const totalPages = Math.ceil(totalBooks / booksPerPage);
@@ -52,7 +64,18 @@ const BookList: React.FC = () => {
         endIndex,
       );
 
-      setBooks(paginatedFolders);
+      setBooks(
+        paginatedFolders.map(
+          (folderObj: { folder: string; completion: number }) => {
+            const metadata = metadataJson[folderObj.folder] || {};
+            return {
+              folder: folderObj.folder,
+              completion: folderObj.completion || 0,
+              metadata,
+            };
+          },
+        ),
+      );
     } else {
       alert('No books directory set in settings.');
     }
@@ -99,100 +122,169 @@ const BookList: React.FC = () => {
             marginTop: '2rem',
           }}
         >
-          {books.map(({ folder, completion }, index) => {
+          {books.map(({ folder, completion, metadata }, index) => {
             const truncatedFolderName =
               folder.length > 20 ? `${folder.substring(0, 17)}...` : folder;
 
-            // Generate the linear gradient based on the completion percentage
             const backgroundGradient = `linear-gradient(to top, #AFE1AF ${completion}%, #FCF5E5 0%)`;
 
+            // Combine metadata into a single string for the tooltip content with line breaks and bold labels
+            const tooltipContent =
+              settings.metadataFields
+                ?.filter((field: any) => field.displayOnCover)
+                .map(
+                  (field: any) =>
+                    `<strong>${field.label}:</strong> ${
+                      metadata?.[field.column] ? metadata[field.column] : 'N/A'
+                    }`,
+                )
+                .join('<br />') || 'No metadata available';
+
+            // Get the fields to display on cover
+            const displayedMetadata = settings.metadataFields?.filter(
+              (field: any) => field.displayOnCover,
+            );
+
             return (
-              <Box
+              <Tooltip
+                title={
+                  <span dangerouslySetInnerHTML={{ __html: tooltipContent }} />
+                }
+                arrow
+                placement="top"
                 key={index}
-                sx={{
-                  width: '10rem',
-                  height: '12.5rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  perspective: '25rem',
-                  cursor: 'pointer',
-                }}
-                onClick={() => handleBookClick(folder)} // Navigate to the book details page
               >
                 <Box
                   sx={{
-                    transform: 'rotateY(-30deg)',
-                    position: 'relative',
-                    transformStyle: 'preserve-3d',
                     width: '10rem',
                     height: '12.5rem',
-                    transition: 'transform 1s ease',
-                    '&:hover': {
-                      transform: 'rotateY(0deg)',
-                    },
-                    '& > :first-of-type': {
-                      position: 'absolute',
-                      width: '10rem',
-                      height: '12.5rem',
-                      borderTopRightRadius: '0.1875rem',
-                      borderBottomRightRadius: '0.1875rem',
-                      boxShadow: '0.3125rem 0.3125rem 1.25rem lightgray',
-                    },
-                    '&::before': {
-                      content: '""',
-                      background: '#fff',
-                      height: 'calc(12.5rem - 2 * 0.1875rem)',
-                      width: '2.5rem',
-                      top: '0.1875rem',
-                      position: 'absolute',
-                      transform:
-                        'translateX(calc(10rem - 2.5rem / 2 - 0.1875rem)) rotateY(90deg) translateX(calc(2.5rem / 2))',
-                    },
-                    '&::after': {
-                      content: '""',
-                      position: 'absolute',
-                      left: '0',
-                      width: '10rem',
-                      height: '12.5rem',
-                      borderTopRightRadius: '0.1875rem',
-                      borderBottomRightRadius: '0.1875rem',
-                      background: backgroundGradient,
-                      transform: 'translateZ(-2.5rem)',
-                      boxShadow: '-0.625rem 0 3.125rem 0.625rem lightgray',
-                    },
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    perspective: '25rem',
+                    cursor: 'pointer',
                   }}
+                  onClick={() => handleBookClick(folder)} // Navigate to the book details page
                 >
                   <Box
                     sx={{
-                      background: backgroundGradient,
+                      transform: 'rotateY(-30deg)',
+                      position: 'relative',
+                      transformStyle: 'preserve-3d',
+                      width: '10rem',
+                      height: '12.5rem',
+                      transition: 'transform 1s ease',
+                      '&:hover': {
+                        transform: 'rotateY(0deg)',
+                      },
+                      '& > :first-of-type': {
+                        position: 'absolute',
+                        width: '10rem',
+                        height: '12.5rem',
+                        borderTopRightRadius: '0.1875rem',
+                        borderBottomRightRadius: '0.1875rem',
+                        boxShadow: '0.3125rem 0.3125rem 1.25rem lightgray',
+                      },
+                      '&::before': {
+                        content: '""',
+                        background: '#fff',
+                        height: 'calc(12.5rem - 2 * 0.1875rem)',
+                        width: '2.5rem',
+                        top: '0.1875rem',
+                        position: 'absolute',
+                        transform:
+                          'translateX(calc(10rem - 2.5rem / 2 - 0.1875rem)) rotateY(90deg) translateX(calc(2.5rem / 2))',
+                      },
+                      '&::after': {
+                        content: '""',
+                        position: 'absolute',
+                        left: '0',
+                        width: '10rem',
+                        height: '12.5rem',
+                        borderTopRightRadius: '0.1875rem',
+                        borderBottomRightRadius: '0.1875rem',
+                        background: backgroundGradient,
+                        transform: 'translateZ(-2.5rem)',
+                        boxShadow: '-0.625rem 0 3.125rem 0.625rem lightgray',
+                      },
                     }}
                   >
                     <Box
                       sx={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        width: '100%',
-                        height: '100%',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'black',
-                        zIndex: 1,
-                        padding: '1.25rem',
-                        textAlign: 'center',
+                        background: backgroundGradient,
                       }}
                     >
-                      <Typography variant="body2">
-                        {truncatedFolderName}
-                      </Typography>
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          transform: 'translate(-50%, -50%)',
+                          width: '100%',
+                          height: '100%',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'black',
+                          zIndex: 1,
+                          padding: '1.25rem',
+                          textAlign: 'center',
+                        }}
+                      >
+                        {metadata && displayedMetadata?.length === 2 && (
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              marginBottom: '0.25rem',
+                              fontWeight: 600,
+                            }}
+                          >
+                            {metadata[displayedMetadata[0].column]
+                              ? `${metadata[displayedMetadata[0].column]?.slice(0, 25)}..`
+                              : ''}
+                          </Typography>
+                        )}
+                        <Typography
+                          variant="body2"
+                          sx={{ margin: '0.75rem 0', fontStyle: 'italic' }}
+                        >
+                          {truncatedFolderName}
+                        </Typography>
+                        {metadata &&
+                          (displayedMetadata?.length !== 2
+                            ? displayedMetadata?.map((field: any) => (
+                                <Typography
+                                  key={field.column}
+                                  variant="body2"
+                                  sx={{
+                                    marginBottom: '0.25rem',
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {metadata[field.column]
+                                    ? `${metadata[field.column]?.slice(0, 25)}..`
+                                    : ''}
+                                </Typography>
+                              ))
+                            : metadata[displayedMetadata[1].column] && (
+                                <Typography
+                                  variant="body2"
+                                  sx={{
+                                    marginTop: '0.25rem',
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {metadata[displayedMetadata[1].column]
+                                    ? `${metadata[displayedMetadata[1].column]?.slice(0, 25)}..`
+                                    : ''}
+                                </Typography>
+                              ))}
+                      </Box>
                     </Box>
                   </Box>
                 </Box>
-              </Box>
+              </Tooltip>
             );
           })}
         </Box>

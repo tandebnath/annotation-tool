@@ -549,7 +549,7 @@ const BookDetails: React.FC = () => {
               justifyContent: 'center',
               marginTop: '7.5rem',
               '& .Mui-selected': {
-                backgroundColor: '#13294B', // Set the background color of the selected page
+                backgroundColor: '#13294B !important', // Set the background color of the selected page
                 color: 'white',
               },
               '& .MuiPaginationItem-root': {

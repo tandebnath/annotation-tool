@@ -169,7 +169,13 @@ const BookList: React.FC = () => {
             {/* <Typography variant="h4" gutterBottom>
               List of Books
             </Typography> */}
-            <Box sx={{ display: 'flex', justifyContent: 'center', margin: '2rem 0 5rem',  }}>
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                margin: '2rem 0 5rem',
+              }}
+            >
               <TextField
                 label="Search by Book ID or visible metadata"
                 onChange={(event) => setSearchTerm(event.target.value)}
@@ -388,7 +394,7 @@ const BookList: React.FC = () => {
               justifyContent: 'center',
               marginTop: '7.5rem',
               '& .Mui-selected': {
-                backgroundColor: '#13294B', // Set the background color of the selected page
+                backgroundColor: '#13294B !important', // Set the background color of the selected page
                 color: 'white',
               },
               '& .MuiPaginationItem-root': {

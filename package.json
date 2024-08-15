@@ -1,19 +1,17 @@
 {
-  "description": "A foundation for scalable desktop apps",
+  "description": "Annotation Tool developed for ARI",
   "keywords": [
     "electron",
-    "boilerplate",
+    "annotation",
     "react",
     "typescript",
     "ts",
-    "sass",
-    "webpack",
-    "hot",
-    "reload"
+    "ari",
+    "uiuc"
   ],
-  "homepage": "https://github.com/electron-react-boilerplate/electron-react-boilerplate#readme",
+  "homepage": "https://tanmoydebnath.com",
   "bugs": {
-    "url": "https://github.com/electron-react-boilerplate/electron-react-boilerplate/issues"
+    "url": "https://tanmoydebnath.com"
   },
   "repository": {
     "type": "git",
@@ -21,15 +19,15 @@
   },
   "license": "MIT",
   "author": {
-    "name": "Electron React Boilerplate Maintainers",
-    "email": "electronreactboilerplate@gmail.com",
-    "url": "https://electron-react-boilerplate.js.org"
+    "name": "Tan Debnath",
+    "email": "tand3@illinois.edu",
+    "url": "https://tanmoydebnath.com"
   },
   "contributors": [
     {
-      "name": "Amila Welihinda",
-      "email": "amilajack@gmail.com",
-      "url": "https://github.com/amilajack"
+      "name": "Tan Debnath",
+      "email": "tand3@illinois.edu",
+      "url": "https://tanmoydebnath.com"
     }
   ],
   "main": "./src/main/main.ts",
@@ -175,8 +173,8 @@
     "webpack-merge": "^5.9.0"
   },
   "build": {
-    "productName": "ElectronReact",
-    "appId": "org.erb.ElectronReact",
+    "productName": "ARIAnnotationTool",
+    "appId": "edu.illinois.appliedresearch.annotationtool/",
     "asar": true,
     "asarUnpack": "**\\*.{node,dll}",
     "files": [
@@ -215,6 +213,7 @@
       ]
     },
     "win": {
+      "icon": "assets/icon.ico",
       "target": [
         "nsis"
       ]

@@ -244,7 +244,7 @@ const Settings: React.FC = () => {
     <Container
       sx={{ padding: '2rem 5rem', fontFamily: 'Montserrat, sans-serif' }}
     >
-      <Typography
+      {/* <Typography
         variant="h4"
         gutterBottom
         sx={{
@@ -254,7 +254,7 @@ const Settings: React.FC = () => {
         }}
       >
         Settings
-      </Typography>
+      </Typography> */}
       <Divider sx={{ marginBottom: '2rem' }} />
       <Box
         mb={4}
@@ -283,6 +283,7 @@ const Settings: React.FC = () => {
                     minWidth: 0,
                     padding: '0.5rem 0.75rem',
                     borderRadius: 0,
+                    backgroundColor: '#13294B',
                   }}
                 >
                   Browse
@@ -316,6 +317,7 @@ const Settings: React.FC = () => {
                     minWidth: 0,
                     padding: '0.5rem 0.75rem',
                     borderRadius: 0,
+                    backgroundColor: '#13294B',
                   }}
                 >
                   Browse
@@ -350,6 +352,7 @@ const Settings: React.FC = () => {
                     minWidth: 0,
                     padding: '0.5rem 0.75rem',
                     borderRadius: 0,
+                    backgroundColor: '#13294B',
                   }}
                 >
                   Browse
@@ -405,7 +408,7 @@ const Settings: React.FC = () => {
             <Chip
               key={index}
               label={label}
-              color="warning"
+              color="secondary"
               onDelete={() => handleDeleteLabel(label)}
               sx={{ marginRight: 1, marginBottom: 1 }}
             />
@@ -491,6 +494,7 @@ const Settings: React.FC = () => {
                     minWidth: 0,
                     padding: '0.5rem 0.75rem',
                     borderRadius: 0,
+                    backgroundColor: '#13294B',
                   }}
                 >
                   Upload
@@ -543,7 +547,7 @@ const Settings: React.FC = () => {
                   alignItems: 'center',
                   flexDirection: 'row',
                   columnGap: '0.25rem',
-                  marginBottom: '1.5rem'
+                  marginBottom: '1.5rem',
                 }}
               >
                 <IconButton
@@ -605,7 +609,11 @@ const Settings: React.FC = () => {
                 />
               </Box>
             ))}
-            <Button variant='outlined' onClick={handleAddMetadataField} sx={{fontWeight: 'bold', mb: 8}}>
+            <Button
+              variant="outlined"
+              onClick={handleAddMetadataField}
+              sx={{ fontWeight: 'bold', mb: 8 }}
+            >
               + Add Metadata Field
             </Button>
           </Box>
@@ -617,7 +625,7 @@ const Settings: React.FC = () => {
         color="success"
         onClick={handleSaveSettings}
         fullWidth
-        sx={{fontWeight: 'bold'}}
+        sx={{ fontWeight: 'bold' }}
       >
         Save
       </Button>

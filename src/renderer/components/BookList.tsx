@@ -7,9 +7,11 @@ import {
   TextField,
   Button,
   Tooltip,
-  CircularProgress
+  CircularProgress,
+  InputAdornment,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { Search } from '@mui/icons-material';
 
 interface Book {
   folder: string;
@@ -164,15 +166,27 @@ const BookList: React.FC = () => {
       ) : (
         <>
           <Box sx={{ marginBottom: '4rem' }}>
-            <Typography variant="h4" gutterBottom>
+            {/* <Typography variant="h4" gutterBottom>
               List of Books
-            </Typography>
-            <TextField
-              label="Search by Book ID or visible metadata..."
-              onChange={(event) => setSearchTerm(event.target.value)}
-              sx={{ marginBottom: '2rem', width: '100%' }}
-              variant="outlined"
-            />
+            </Typography> */}
+            <Box sx={{ display: 'flex', justifyContent: 'center', margin: '2rem 0 5rem',  }}>
+              <TextField
+                label="Search by Book ID or visible metadata"
+                onChange={(event) => setSearchTerm(event.target.value)}
+                sx={{ width: '50%' }}
+                variant="standard"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search />
+                    </InputAdornment>
+                  ),
+                }}
+                InputLabelProps={{
+                  shrink: true, // Ensure the label stays visible and doesn't float
+                }}
+              />
+            </Box>
             <Box
               sx={{
                 display: 'flex',
@@ -368,11 +382,21 @@ const BookList: React.FC = () => {
             page={currentPage}
             onChange={handlePageChange}
             variant="outlined"
-            shape="rounded"
+            shape="circular"
             sx={{
               display: 'flex',
               justifyContent: 'center',
               marginTop: '7.5rem',
+              '& .Mui-selected': {
+                backgroundColor: '#13294B', // Set the background color of the selected page
+                color: 'white',
+              },
+              '& .MuiPaginationItem-root': {
+                '&:hover': {
+                  backgroundColor: '#145ea8',
+                  color: 'white',
+                },
+              },
             }}
           />
 
@@ -386,6 +410,7 @@ const BookList: React.FC = () => {
             <TextField
               id="pageInput"
               type="number"
+              size="small"
               InputProps={{ inputProps: { min: 1, max: totalPages } }}
               placeholder="Enter Page No."
               sx={{
@@ -394,7 +419,12 @@ const BookList: React.FC = () => {
                 textAlign: 'center',
               }}
             />
-            <Button variant="contained" onClick={handleGoToPage}>
+            <Button
+              size="small"
+              variant="contained"
+              onClick={handleGoToPage}
+              sx={{ fontWeight: 'bold', backgroundColor: '#13294B' }}
+            >
               Go to Page
             </Button>
           </Box>

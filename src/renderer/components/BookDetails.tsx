@@ -16,7 +16,10 @@ import {
   CardContent,
   CardActions,
   CircularProgress,
+  IconButton,
+  LinearProgress,
 } from '@mui/material';
+import { ArrowBackOutlined } from '@mui/icons-material';
 
 interface Annotation {
   bookId: any;
@@ -295,26 +298,32 @@ const BookDetails: React.FC = () => {
         </Box>
       ) : (
         <>
-          <Button
-            variant="outlined"
+          <IconButton
             onClick={() => navigate('/')}
-            sx={{ marginBottom: '1rem' }}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              padding: 0, // Remove padding to avoid oval shape
+              '&:hover': {
+                transform: 'scale(1.05)',
+                boxShadow: 'none',
+              },
+              marginBottom: '1rem',
+            }}
           >
-            Back to Books
-          </Button>
+            <ArrowBackOutlined sx={{ marginRight: '0.5rem' }} />
+            <Typography variant="button">Back to Books</Typography>
+          </IconButton>
 
           <Box sx={{ marginBottom: '2rem' }}>
-            <Typography variant="h5" gutterBottom>
-              Book Details
-            </Typography>
-            <Typography>
+            <Typography sx={{ fontSize: '1.25rem' }}>
               <strong>ID:</strong> {bookId}
             </Typography>
             {bookMetadata &&
               Object.keys(bookMetadata).length > 0 &&
               settings.metadataFields?.map(
                 (field: { column: string; label: string }) => (
-                  <Typography key={field.column}>
+                  <Typography key={field.column} sx={{ fontSize: '1.25rem' }}>
                     <strong>{field.label}:</strong>{' '}
                     {bookMetadata?.[
                       field.column as keyof typeof bookMetadata
@@ -325,14 +334,17 @@ const BookDetails: React.FC = () => {
           </Box>
 
           <Box sx={{ marginBottom: '2rem' }}>
-            <Typography variant="h6" gutterBottom>
+            <Typography
+              gutterBottom
+              sx={{ fontSize: '1.125rem', fontWeight: 'bold' }}
+            >
               Progress
             </Typography>
             <Box
               sx={{
                 width: '100%',
                 backgroundColor: '#e0e0e0',
-                borderRadius: '4px',
+                borderRadius: '0.25rem',
               }}
             >
               <Box
@@ -340,8 +352,8 @@ const BookDetails: React.FC = () => {
                   width: `${bookCompletion}%`,
                   backgroundColor: '#AFE1AF',
                   color: 'black',
-                  padding: '0.5rem',
-                  borderRadius: '4px',
+                  padding: '0.25rem',
+                  borderRadius: '0.25rem',
                   textAlign: 'center',
                   fontWeight: 500,
                 }}
@@ -352,7 +364,10 @@ const BookDetails: React.FC = () => {
           </Box>
 
           <Box sx={{ marginBottom: '2rem' }}>
-            <Typography variant="h6" gutterBottom>
+            <Typography
+              gutterBottom
+              sx={{ fontSize: '1.125rem', fontWeight: 'bold' }}
+            >
               Volume Notes
             </Typography>
             <TextField
@@ -373,15 +388,18 @@ const BookDetails: React.FC = () => {
               <Button
                 variant="contained"
                 color="success"
+                size="small"
                 onClick={handleSaveNotes}
-                sx={{ marginRight: '1rem' }}
+                sx={{ marginRight: '1rem', fontWeight: 'bold' }}
               >
                 Save
               </Button>
               <Button
                 variant="contained"
                 color="error"
+                size="small"
                 onClick={handleClearNotes}
+                sx={{ fontWeight: 'bold' }}
               >
                 Clear
               </Button>
@@ -399,6 +417,7 @@ const BookDetails: React.FC = () => {
               <TextField
                 label="From Page"
                 type="number"
+                size="small"
                 value={fromPage}
                 onChange={(e) => setFromPage(e.target.value)}
                 sx={{ marginRight: '0.5rem' }}
@@ -407,15 +426,17 @@ const BookDetails: React.FC = () => {
               <TextField
                 label="To Page"
                 type="number"
+                size="small"
                 value={toPage}
                 onChange={(e) => setToPage(e.target.value)}
                 sx={{ marginRight: '0.5rem' }}
                 required
               />
               <FormControl required sx={{ marginRight: '0.5rem' }}>
-                <InputLabel>Select Label</InputLabel>
+                {/* <InputLabel>Select Label</InputLabel> */}
                 <Select
                   value={rangeState}
+                  size="small"
                   onChange={(e) => setRangeState(e.target.value as string)}
                   displayEmpty
                   inputProps={{ 'aria-label': 'Without label' }}
@@ -430,7 +451,13 @@ const BookDetails: React.FC = () => {
                   ))}
                 </Select>
               </FormControl>
-              <Button type="submit" variant="contained" color="success">
+              <Button
+                type="submit"
+                size="small"
+                variant="contained"
+                color="success"
+                sx={{ fontWeight: 'bold' }}
+              >
                 Save
               </Button>
             </form>
@@ -445,7 +472,8 @@ const BookDetails: React.FC = () => {
           >
             <Button
               variant="contained"
-              color="warning"
+              color="secondary"
+              size="small"
               onClick={handleMarkAllAs}
             >
               Mark all as {defaultLabel}
@@ -458,12 +486,13 @@ const BookDetails: React.FC = () => {
             sx={{
               marginBottom: '2rem',
               display: 'flex',
-              justifyContent: 'center',
+              justifyContent: 'flex-end',
             }}
           >
             <Button
               variant="contained"
               color="primary"
+              size="small"
               onClick={handleJumpToUnannotated}
               disabled={bookCompletion === 100}
             >
@@ -475,7 +504,10 @@ const BookDetails: React.FC = () => {
             <React.Fragment key={index}>
               <Card sx={{ marginBottom: '2rem' }}>
                 <CardContent>
-                  <Typography variant="h6" sx={{ color: '#d70040' }}>
+                  <Typography
+                    variant="h6"
+                    sx={{ color: '#d70040', fontWeight: 'bold' }}
+                  >
                     Page {parseInt(page.fileName.replace('.txt', ''), 10)}
                   </Typography>
                   <pre>{page.content}</pre>
@@ -491,6 +523,7 @@ const BookDetails: React.FC = () => {
                           : '#E5E4E2',
                         color: 'black',
                         marginRight: '0.5rem',
+                        fontWeight: 'bold'
                       }}
                       onClick={() =>
                         handleAnnotationClick(page.fileName, state)
@@ -510,11 +543,21 @@ const BookDetails: React.FC = () => {
             page={currentPage}
             onChange={handlePageChange}
             variant="outlined"
-            shape="rounded"
+            shape="circular"
             sx={{
               display: 'flex',
               justifyContent: 'center',
               marginTop: '7.5rem',
+              '& .Mui-selected': {
+                backgroundColor: '#13294B', // Set the background color of the selected page
+                color: 'white',
+              },
+              '& .MuiPaginationItem-root': {
+                '&:hover': {
+                  backgroundColor: '#145ea8',
+                  color: 'white',
+                },
+              },
             }}
           />
 
@@ -528,6 +571,7 @@ const BookDetails: React.FC = () => {
             <TextField
               id="pageInput"
               type="number"
+              size="small"
               InputProps={{ inputProps: { min: 1, max: totalPages } }}
               placeholder="Enter Page No."
               sx={{
@@ -536,7 +580,12 @@ const BookDetails: React.FC = () => {
                 textAlign: 'center',
               }}
             />
-            <Button variant="contained" onClick={handleGoToPage}>
+            <Button
+              size="small"
+              variant="contained"
+              onClick={handleGoToPage}
+              sx={{ fontWeight: 'bold', backgroundColor: '#13294B' }}
+            >
               Go to Page
             </Button>
           </Box>

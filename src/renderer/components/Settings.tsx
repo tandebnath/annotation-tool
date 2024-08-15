@@ -74,6 +74,12 @@ const Settings: React.FC = () => {
   }, []);
 
   const handleSaveSettings = () => {
+    // Check if any metadata field is empty
+    if (metadataFields.some((field) => !field.column || !field.label)) {
+      alert('Please fill in all metadata fields before saving.');
+      return;
+    }
+
     if (checkFields()) {
       const settings = {
         booksDir,
@@ -88,12 +94,6 @@ const Settings: React.FC = () => {
         bookIdColumn,
         metadataFields,
       };
-
-      if (isMetadataAvailable) {
-        // Save additional metadata settings if metadata is enabled
-        settings.bookIdColumn = bookIdColumn;
-        settings.metadataFields = metadataFields; // Save the metadata fields and labels
-      }
 
       window.electron.ipcRenderer.invoke('settings:save', settings).then(() => {
         alert('Settings saved successfully!');
@@ -195,10 +195,22 @@ const Settings: React.FC = () => {
   };
 
   const handleAddMetadataField = () => {
+    // Check if there's an empty metadata field before adding a new one
+    if (metadataFields.some((field) => !field.column || !field.label)) {
+      alert('Please fill in all metadata fields before adding another.');
+      return;
+    }
+
     setMetadataFields([
       ...metadataFields,
       { column: '', label: '', displayOnCover: false },
     ]);
+  };
+
+  const handleRemoveMetadataField = (index: number) => {
+    const updatedFields = [...metadataFields];
+    updatedFields.splice(index, 1);
+    setMetadataFields(updatedFields);
   };
 
   const handleMetadataFieldChange = (
@@ -207,6 +219,19 @@ const Settings: React.FC = () => {
     value: any,
   ) => {
     const updatedFields: any = [...metadataFields];
+
+    // Check if trying to set displayOnCover to true and ensure only 2 are allowed
+    if (field === 'displayOnCover' && value) {
+      const displayOnCoverCount = updatedFields.filter(
+        (field: any) => field.displayOnCover,
+      ).length;
+
+      if (displayOnCoverCount >= 2) {
+        alert('You can only display up to 2 fields on the cover.');
+        return;
+      }
+    }
+
     updatedFields[index][field] = value;
     setMetadataFields(updatedFields);
   };
@@ -416,6 +441,14 @@ const Settings: React.FC = () => {
                   }
                   label="Display on Cover"
                 />
+                <Button
+                  variant="contained"
+                  color="error"
+                  onClick={() => handleRemoveMetadataField(index)}
+                  sx={{ marginLeft: 2 }}
+                >
+                  Remove
+                </Button>
               </Box>
             ))}
             <Button onClick={handleAddMetadataField}>

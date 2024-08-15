@@ -49,6 +49,16 @@ const BookDetails: React.FC = () => {
   const [pagesPerAppPage, setPagesPerAppPage] = useState(1);
   const [defaultLabel, setDefaultLabel] = useState('');
 
+  const [settings, setSettings] = useState<any>({});
+
+  const loadSettings = async () => {
+    const settings = await window.electron.ipcRenderer.invoke('settings:load');
+    setSettings(settings);
+    setStates(settings.labels || []);
+    setPagesPerAppPage(parseInt(settings.pagesPerAppPage, 10) || 1);
+    setDefaultLabel(settings.defaultLabel || '');
+  };
+
   useEffect(() => {
     loadSettings();
     loadBookDetails();
@@ -57,34 +67,33 @@ const BookDetails: React.FC = () => {
   }, [bookId]);
 
   useEffect(() => {
-    calculatePagination();
     calculateBookCompletion();
   }, [pages, annotations, pagesPerAppPage]);
 
-  const loadSettings = async () => {
-    const settings = await window.electron.ipcRenderer.invoke('settings:load');
-    setStates(settings.labels || []);
-    setPagesPerAppPage(parseInt(settings.pagesPerAppPage, 10) || 1);
-    setDefaultLabel(settings.defaultLabel || '');
-  };
-
   const loadBookDetails = async () => {
-    setBookMetadata({
-      title: 'Sample Book',
-      author: 'Author Name',
-      year: '2024',
-    });
-
     const loadedPages = await window.electron.ipcRenderer.invoke(
       'getBookContents',
       bookId,
     );
     setPages(loadedPages);
-  };
 
-  const calculatePagination = () => {
-    const totalAppPages = Math.ceil(pages.length / pagesPerAppPage);
-    setTotalPages(totalAppPages);
+    const settingsData =
+      await window.electron.ipcRenderer.invoke('settings:load');
+    setSettings(settingsData);
+
+    let metadataJson: any = {};
+    if (settingsData.isMetadataAvailable) {
+      metadataJson = await window.electron.ipcRenderer.invoke('loadMetadata');
+    }
+
+    if (bookId && metadataJson[bookId]) {
+      setBookMetadata(metadataJson[bookId]);
+    }
+
+    // Adjust pagination based on booksPerPage
+    const booksPerPage = parseInt(settingsData.booksPerPage, 10) || 1;
+    const totalBookPages = Math.ceil(loadedPages.length / booksPerPage);
+    setTotalPages(totalBookPages); // Set total pages based on the number of book pages divided by booksPerPage
   };
 
   const calculateBookCompletion = () => {
@@ -275,15 +284,17 @@ const BookDetails: React.FC = () => {
         <Typography>
           <strong>ID:</strong> {bookId}
         </Typography>
-        <Typography>
-          <strong>Title:</strong> {bookMetadata.title}
-        </Typography>
-        <Typography>
-          <strong>Author:</strong> {bookMetadata.author}
-        </Typography>
-        <Typography>
-          <strong>Year:</strong> {bookMetadata.year}
-        </Typography>
+        {bookMetadata &&
+          Object.keys(bookMetadata).length > 0 &&
+          settings.metadataFields?.map(
+            (field: { column: string; label: string }) => (
+              <Typography key={field.column}>
+                <strong>{field.label}:</strong>{' '}
+                {bookMetadata?.[field.column as keyof typeof bookMetadata] ||
+                  'N/A'}
+              </Typography>
+            ),
+          )}
       </Box>
 
       <Box sx={{ marginBottom: '2rem' }}>

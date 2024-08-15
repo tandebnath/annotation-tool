@@ -13,7 +13,11 @@ import {
   CircularProgress,
   DialogTitle,
   DialogContent,
+  Divider,
+  IconButton,
+  Checkbox,
 } from '@mui/material';
+import { CloseOutlined } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
 const Settings: React.FC = () => {
@@ -240,92 +244,188 @@ const Settings: React.FC = () => {
     <Container
       sx={{ padding: '2rem 5rem', fontFamily: 'Montserrat, sans-serif' }}
     >
-      <Typography variant="h4" gutterBottom>
+      <Typography
+        variant="h4"
+        gutterBottom
+        sx={{
+          textAlign: 'center',
+          fontWeight: 600,
+          textTransform: 'uppercase',
+        }}
+      >
         Settings
       </Typography>
+      <Divider sx={{ marginBottom: '2rem' }} />
+      <Box
+        mb={4}
+        sx={{ display: 'flex', flexDirection: 'column', rowGap: '1rem' }}
+      >
+        <Box>
+          <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+            Select Books Directory
+          </Typography>
+          <TextField
+            size="small"
+            value={booksDir}
+            onChange={(e) => setBooksDir(e.target.value)}
+            fullWidth
+            variant="outlined"
+            margin="normal"
+            sx={{ marginTop: '0.25rem' }}
+            InputProps={{
+              endAdornment: (
+                <Button
+                  onClick={handleBrowseDirectory}
+                  variant="contained"
+                  color="info"
+                  sx={{
+                    fontWeight: 600,
+                    minWidth: 0,
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: 0,
+                  }}
+                >
+                  Browse
+                </Button>
+              ),
+              readOnly: true,
+              sx: {
+                paddingRight: 0, // Remove padding inside the TextField on the right
+              },
+            }}
+          />
+        </Box>
+        <Box>
+          <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+            Select Annotations File
+          </Typography>
+          <TextField
+            size="small"
+            value={annotationsCsv}
+            onChange={(e) => setAnnotationsCsv(e.target.value)}
+            fullWidth
+            margin="normal"
+            InputProps={{
+              endAdornment: (
+                <Button
+                  onClick={() => handleBrowseFile(setAnnotationsCsv)}
+                  variant="contained"
+                  color="info"
+                  sx={{
+                    fontWeight: 600,
+                    minWidth: 0,
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: 0,
+                  }}
+                >
+                  Browse
+                </Button>
+              ),
+              readOnly: true,
+              sx: {
+                paddingRight: 0,
+              },
+            }}
+            sx={{ marginTop: '0.25rem' }}
+          />
+        </Box>
+        <Box>
+          <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+            Select Volume Notes File
+          </Typography>
+          <TextField
+            size="small"
+            value={volumeNotesCsv}
+            onChange={(e) => setVolumeNotesCsv(e.target.value)}
+            fullWidth
+            margin="normal"
+            InputProps={{
+              endAdornment: (
+                <Button
+                  onClick={() => handleBrowseFile(setVolumeNotesCsv)}
+                  variant="contained"
+                  color="info"
+                  sx={{
+                    fontWeight: 600,
+                    minWidth: 0,
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: 0,
+                  }}
+                >
+                  Browse
+                </Button>
+              ),
+              readOnly: true,
+              sx: {
+                paddingRight: 0,
+              },
+            }}
+            sx={{ marginTop: '0.25rem' }}
+          />
+        </Box>
 
-      <Box mb={4}>
-        <TextField
-          label="Path to Books Directory"
-          value={booksDir}
-          onChange={(e) => setBooksDir(e.target.value)}
-          fullWidth
-          margin="normal"
-          InputProps={{
-            endAdornment: (
-              <Button onClick={handleBrowseDirectory}>Browse</Button>
-            ),
-            readOnly: true,
-          }}
-        />
-        <TextField
-          label="Path to Annotations CSV"
-          value={annotationsCsv}
-          onChange={(e) => setAnnotationsCsv(e.target.value)}
-          fullWidth
-          margin="normal"
-          InputProps={{
-            endAdornment: (
-              <Button onClick={() => handleBrowseFile(setAnnotationsCsv)}>
-                Browse
-              </Button>
-            ),
-            readOnly: true,
-          }}
-        />
-        <TextField
-          label="Path to Volume Notes CSV"
-          value={volumeNotesCsv}
-          onChange={(e) => setVolumeNotesCsv(e.target.value)}
-          fullWidth
-          margin="normal"
-          InputProps={{
-            endAdornment: (
-              <Button onClick={() => handleBrowseFile(setVolumeNotesCsv)}>
-                Browse
-              </Button>
-            ),
-            readOnly: true,
-          }}
-        />
-        <TextField
-          label="Number of Books to Display per Page"
-          value={booksPerPage}
-          onChange={(e) => setBooksPerPage(e.target.value)}
-          type="number"
-          fullWidth
-          margin="normal"
-        />
-        <TextField
-          label="Number of Book Pages to Display per (Application) Page"
-          value={pagesPerAppPage}
-          onChange={(e) => setPagesPerAppPage(e.target.value)}
-          type="number"
-          fullWidth
-          margin="normal"
-        />
+        <Box>
+          <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+            Enter Number of Books to Display per Page
+          </Typography>
+          <TextField
+            size="small"
+            value={booksPerPage}
+            onChange={(e) => setBooksPerPage(e.target.value)}
+            type="number"
+            fullWidth
+            margin="normal"
+            sx={{ marginTop: '0.25rem' }}
+          />
+        </Box>
+
+        <Box>
+          <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+            Enter Number of Book Pages to Display per Application Page
+          </Typography>
+          <TextField
+            label=""
+            size="small"
+            value={pagesPerAppPage}
+            onChange={(e) => setPagesPerAppPage(e.target.value)}
+            type="number"
+            fullWidth
+            margin="normal"
+            sx={{ marginTop: '0.25rem' }}
+          />
+        </Box>
       </Box>
 
       <Box mb={4}>
-        <Typography variant="h6">Labels</Typography>
+        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+          Labels
+        </Typography>
         <Box mb={2} sx={{ display: 'flex', flexWrap: 'wrap' }}>
           {labels.map((label, index) => (
             <Chip
               key={index}
               label={label}
+              color="warning"
               onDelete={() => handleDeleteLabel(label)}
               sx={{ marginRight: 1, marginBottom: 1 }}
             />
           ))}
         </Box>
-        <Box sx={{ display: 'flex' }}>
+        <Box sx={{ display: 'flex', height: '100%', flexDirection: 'row' }}>
           <TextField
             value={labelInput}
             onChange={(e) => setLabelInput(e.target.value)}
             fullWidth
+            size="small"
             placeholder="Enter label"
           />
-          <Button onClick={handleAddLabel} sx={{ marginLeft: 2 }}>
+          <Button
+            onClick={handleAddLabel}
+            variant="contained"
+            color="success"
+            size="small"
+            sx={{ marginLeft: 2, textWrap: 'nowrap', fontWeight: 'bold' }}
+          >
             Save Label
           </Button>
         </Box>
@@ -333,9 +433,12 @@ const Settings: React.FC = () => {
 
       {labels.length > 0 && (
         <Box mb={4}>
+          <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+            Choose Default Label for 'Mark as' Button
+          </Typography>
           <TextField
             select
-            label="Default Label for 'Mark as' Button"
+            size="small"
             value={defaultLabel}
             onChange={(e) => setDefaultLabel(e.target.value)}
             fullWidth
@@ -358,21 +461,47 @@ const Settings: React.FC = () => {
           />
         }
         label="Is Metadata Available?"
+        sx={{
+          '& .MuiFormControlLabel-label': {
+            fontSize: '1.125rem',
+            fontWeight: 'bold',
+          },
+          marginTop: '1rem',
+        }}
       />
 
       {isMetadataAvailable && (
-        <Box mb={4}>
+        <Box mb={1} sx={{ marginTop: '1.5rem' }}>
+          <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+            Upload Metadata File
+          </Typography>
           <TextField
-            label="Upload Metadata File"
             value={metadataFilePath}
             fullWidth
+            size="small"
             margin="normal"
             InputProps={{
               endAdornment: (
-                <Button onClick={handleUploadMetadataFile}>Upload</Button>
+                <Button
+                  onClick={handleUploadMetadataFile}
+                  variant="contained"
+                  color="info"
+                  sx={{
+                    fontWeight: 600,
+                    minWidth: 0,
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: 0,
+                  }}
+                >
+                  Upload
+                </Button>
               ),
               readOnly: true,
+              sx: {
+                paddingRight: 0, // Remove padding inside the TextField on the right
+              },
             }}
+            sx={{ marginTop: '0.25rem' }}
           />
         </Box>
       )}
@@ -380,12 +509,16 @@ const Settings: React.FC = () => {
       {csvColumns.length > 0 && (
         <>
           <Box mb={4}>
+            <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+              Choose Book ID Column
+            </Typography>
             <TextField
               select
-              label="Choose Book ID Column"
+              size="small"
               value={bookIdColumn}
               onChange={(e) => setBookIdColumn(e.target.value)}
               fullWidth
+              sx={{ marginTop: '0.25rem' }}
             >
               {csvColumns.map((column, idx) => (
                 <MenuItem key={idx} value={column}>
@@ -396,15 +529,35 @@ const Settings: React.FC = () => {
           </Box>
 
           <Box>
-            <Typography variant="h6">Metadata Fields</Typography>
+            <Typography
+              variant="body1"
+              sx={{ fontWeight: 'bold', marginBottom: '1rem' }}
+            >
+              Add or Remove Metadata Fields
+            </Typography>
             {metadataFields.map((field, index) => (
               <Box
                 key={index}
-                sx={{ display: 'flex', alignItems: 'center', mb: 2 }}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  flexDirection: 'row',
+                  columnGap: '0.25rem',
+                  marginBottom: '1.5rem'
+                }}
               >
+                <IconButton
+                  color="error"
+                  onClick={() => handleRemoveMetadataField(index)}
+                  sx={{ marginLeft: 2 }}
+                >
+                  <CloseOutlined />
+                </IconButton>
                 <TextField
                   select
-                  label="Choose Metadata Column"
+                  size="small"
+                  label="Select Column from Metadata File"
+                  fullWidth
                   value={field.column}
                   onChange={(e) =>
                     handleMetadataFieldChange(index, 'column', e.target.value)
@@ -418,7 +571,9 @@ const Settings: React.FC = () => {
                   ))}
                 </TextField>
                 <TextField
-                  label="Label"
+                  label="Enter Label to Assign"
+                  size="small"
+                  fullWidth
                   value={field.label}
                   onChange={(e) =>
                     handleMetadataFieldChange(index, 'label', e.target.value)
@@ -427,9 +582,9 @@ const Settings: React.FC = () => {
                 />
                 <FormControlLabel
                   control={
-                    <Switch
+                    <Checkbox
                       checked={field.displayOnCover}
-                      onChange={(e) =>
+                      onChange={(e: any) =>
                         handleMetadataFieldChange(
                           index,
                           'displayOnCover',
@@ -439,19 +594,18 @@ const Settings: React.FC = () => {
                       color="primary"
                     />
                   }
-                  label="Display on Cover"
+                  label="Show on Book Cover"
+                  sx={{
+                    '& .MuiFormControlLabel-label': {
+                      fontSize: '0.875rem',
+                      fontWeight: 'bold',
+                      textWrap: 'nowrap',
+                    },
+                  }}
                 />
-                <Button
-                  variant="contained"
-                  color="error"
-                  onClick={() => handleRemoveMetadataField(index)}
-                  sx={{ marginLeft: 2 }}
-                >
-                  Remove
-                </Button>
               </Box>
             ))}
-            <Button onClick={handleAddMetadataField}>
+            <Button variant='outlined' onClick={handleAddMetadataField} sx={{fontWeight: 'bold', mb: 8}}>
               + Add Metadata Field
             </Button>
           </Box>
@@ -463,6 +617,7 @@ const Settings: React.FC = () => {
         color="success"
         onClick={handleSaveSettings}
         fullWidth
+        sx={{fontWeight: 'bold'}}
       >
         Save
       </Button>

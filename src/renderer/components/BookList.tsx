@@ -7,6 +7,7 @@ import {
   TextField,
   Button,
   Tooltip,
+  CircularProgress
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
@@ -24,11 +25,21 @@ const BookList: React.FC = () => {
   const [settings, setSettings] = useState<any>({});
   const [searchTerm, setSearchTerm] = useState('');
 
+  const [loading, setLoading] = useState(true);
+
   const navigate = useNavigate();
 
   useEffect(() => {
-    loadSettings();
-    loadBooks();
+    const loadAllData = async () => {
+      setLoading(true); // Start loading
+
+      await loadSettings();
+      await loadBooks();
+
+      setLoading(false); // Stop loading after everything is fetched
+    };
+
+    loadAllData();
   }, []);
 
   useEffect(() => {
@@ -137,222 +148,258 @@ const BookList: React.FC = () => {
     <Container
       sx={{ padding: '2rem 5rem', fontFamily: 'Montserrat, sans-serif' }}
     >
-      <Box sx={{ marginBottom: '4rem' }}>
-        <Typography variant="h4" gutterBottom>
-          List of Books
-        </Typography>
-        <TextField
-          label="Search by Book ID or visible metadata..."
-          onChange={(event) => setSearchTerm(event.target.value)}
-          sx={{ marginBottom: '2rem', width: '100%' }}
-          variant="outlined"
-        />
+      {loading ? (
         <Box
           sx={{
             display: 'flex',
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            columnGap: '4rem',
-            rowGap: '5rem',
+            flexDirection: 'column',
+            alignItems: 'center',
             justifyContent: 'center',
-            marginTop: '2rem',
+            height: '100vh',
           }}
         >
-          {getPaginatedBooks().map(
-            ({ folder, completion, metadata }, index) => {
-              const truncatedFolderName =
-                folder.length > 20 ? `${folder.substring(0, 17)}...` : folder;
+          <CircularProgress />
+          <Typography sx={{ marginTop: '1rem' }}>Loading...</Typography>
+        </Box>
+      ) : (
+        <>
+          <Box sx={{ marginBottom: '4rem' }}>
+            <Typography variant="h4" gutterBottom>
+              List of Books
+            </Typography>
+            <TextField
+              label="Search by Book ID or visible metadata..."
+              onChange={(event) => setSearchTerm(event.target.value)}
+              sx={{ marginBottom: '2rem', width: '100%' }}
+              variant="outlined"
+            />
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                columnGap: '4rem',
+                rowGap: '5rem',
+                justifyContent: 'center',
+                marginTop: '2rem',
+              }}
+            >
+              {getPaginatedBooks().map(
+                ({ folder, completion, metadata }, index) => {
+                  const truncatedFolderName =
+                    folder.length > 20
+                      ? `${folder.substring(0, 17)}...`
+                      : folder;
 
-              const backgroundGradient = `linear-gradient(to top, #AFE1AF ${completion}%, #FCF5E5 0%)`;
+                  const backgroundGradient = `linear-gradient(to top, #AFE1AF ${completion}%, #FCF5E5 0%)`;
 
-              const tooltipContent =
-                settings.metadataFields
-                  ?.filter((field: any) => field.displayOnCover)
-                  .map(
-                    (field: any) =>
-                      `<strong>${field.label}:</strong> ${
-                        metadata?.[field.column]
-                          ? metadata[field.column]
-                          : 'N/A'
-                      }`,
-                  )
-                  .join('<br />') || 'No metadata available';
+                  const tooltipContent =
+                    settings.metadataFields
+                      ?.filter((field: any) => field.displayOnCover)
+                      .map(
+                        (field: any) =>
+                          `<strong>${field.label}:</strong> ${
+                            metadata?.[field.column]
+                              ? metadata[field.column]
+                              : 'N/A'
+                          }`,
+                      )
+                      .join('<br />') || 'No metadata available';
 
-              const displayedMetadata = settings.metadataFields?.filter(
-                (field: any) => field.displayOnCover,
-              );
+                  const displayedMetadata = settings.metadataFields?.filter(
+                    (field: any) => field.displayOnCover,
+                  );
 
-              return (
-                <Tooltip
-                  title={
-                    <span
-                      dangerouslySetInnerHTML={{ __html: tooltipContent }}
-                    />
-                  }
-                  arrow
-                  placement="top"
-                  key={index}
-                >
-                  <Box
-                    sx={{
-                      width: '10rem',
-                      height: '12.5rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      perspective: '25rem',
-                      cursor: 'pointer',
-                    }}
-                    onClick={() => handleBookClick(folder)}
-                  >
-                    <Box
-                      sx={{
-                        transform: 'rotateY(-30deg)',
-                        position: 'relative',
-                        transformStyle: 'preserve-3d',
-                        width: '10rem',
-                        height: '12.5rem',
-                        transition: 'transform 1s ease',
-                        '&:hover': {
-                          transform: 'rotateY(0deg)',
-                        },
-                        '& > :first-of-type': {
-                          position: 'absolute',
-                          width: '10rem',
-                          height: '12.5rem',
-                          borderTopRightRadius: '0.1875rem',
-                          borderBottomRightRadius: '0.1875rem',
-                          boxShadow: '0.3125rem 0.3125rem 1.25rem lightgray',
-                        },
-                        '&::before': {
-                          content: '""',
-                          background: '#fff',
-                          height: 'calc(12.5rem - 2 * 0.1875rem)',
-                          width: '2.5rem',
-                          top: '0.1875rem',
-                          position: 'absolute',
-                          transform:
-                            'translateX(calc(10rem - 2.5rem / 2 - 0.1875rem)) rotateY(90deg) translateX(calc(2.5rem / 2))',
-                        },
-                        '&::after': {
-                          content: '""',
-                          position: 'absolute',
-                          left: '0',
-                          width: '10rem',
-                          height: '12.5rem',
-                          borderTopRightRadius: '0.1875rem',
-                          borderBottomRightRadius: '0.1875rem',
-                          background: backgroundGradient,
-                          transform: 'translateZ(-2.5rem)',
-                          boxShadow: '-0.625rem 0 3.125rem 0.625rem lightgray',
-                        },
-                      }}
+                  return (
+                    <Tooltip
+                      title={
+                        <span
+                          dangerouslySetInnerHTML={{ __html: tooltipContent }}
+                        />
+                      }
+                      arrow
+                      placement="top"
+                      key={index}
                     >
                       <Box
                         sx={{
-                          background: backgroundGradient,
+                          width: '10rem',
+                          height: '12.5rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          perspective: '25rem',
+                          cursor: 'pointer',
                         }}
+                        onClick={() => handleBookClick(folder)}
                       >
                         <Box
                           sx={{
-                            position: 'absolute',
-                            top: '50%',
-                            left: '50%',
-                            transform: 'translate(-50%, -50%)',
-                            width: '100%',
-                            height: '100%',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'black',
-                            zIndex: 1,
-                            padding: '1.25rem',
-                            textAlign: 'center',
+                            transform: 'rotateY(-30deg)',
+                            position: 'relative',
+                            transformStyle: 'preserve-3d',
+                            width: '10rem',
+                            height: '12.5rem',
+                            transition: 'transform 1s ease',
+                            '&:hover': {
+                              transform: 'rotateY(0deg)',
+                            },
+                            '& > :first-of-type': {
+                              position: 'absolute',
+                              width: '10rem',
+                              height: '12.5rem',
+                              borderTopRightRadius: '0.1875rem',
+                              borderBottomRightRadius: '0.1875rem',
+                              boxShadow:
+                                '0.3125rem 0.3125rem 1.25rem lightgray',
+                            },
+                            '&::before': {
+                              content: '""',
+                              background: '#fff',
+                              height: 'calc(12.5rem - 2 * 0.1875rem)',
+                              width: '2.5rem',
+                              top: '0.1875rem',
+                              position: 'absolute',
+                              transform:
+                                'translateX(calc(10rem - 2.5rem / 2 - 0.1875rem)) rotateY(90deg) translateX(calc(2.5rem / 2))',
+                            },
+                            '&::after': {
+                              content: '""',
+                              position: 'absolute',
+                              left: '0',
+                              width: '10rem',
+                              height: '12.5rem',
+                              borderTopRightRadius: '0.1875rem',
+                              borderBottomRightRadius: '0.1875rem',
+                              background: backgroundGradient,
+                              transform: 'translateZ(-2.5rem)',
+                              boxShadow:
+                                '-0.625rem 0 3.125rem 0.625rem lightgray',
+                            },
                           }}
                         >
-                          {metadata && displayedMetadata?.length === 2 && (
-                            <Typography
-                              variant="body2"
+                          <Box
+                            sx={{
+                              background: backgroundGradient,
+                            }}
+                          >
+                            <Box
                               sx={{
-                                marginBottom: '0.25rem',
-                                fontWeight: 600,
+                                position: 'absolute',
+                                top: '50%',
+                                left: '50%',
+                                transform: 'translate(-50%, -50%)',
+                                width: '100%',
+                                height: '100%',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'black',
+                                zIndex: 1,
+                                padding: '1.25rem',
+                                textAlign: 'center',
                               }}
                             >
-                              {metadata[displayedMetadata[0].column]
-                                ? `${metadata[displayedMetadata[0].column]?.slice(0, 25)}..`
-                                : ''}
-                            </Typography>
-                          )}
-                          <Typography
-                            variant="body2"
-                            sx={{ margin: '0.75rem 0', fontStyle: 'italic' }}
-                          >
-                            {truncatedFolderName}
-                          </Typography>
-                          {metadata &&
-                            (displayedMetadata?.length !== 2
-                              ? displayedMetadata?.map((field: any) => (
-                                  <Typography
-                                    key={field.column}
-                                    variant="body2"
-                                    sx={{
-                                      marginBottom: '0.25rem',
-                                      fontWeight: 600,
-                                    }}
-                                  >
-                                    {metadata[field.column]
-                                      ? `${metadata[field.column]?.slice(0, 25)}..`
-                                      : ''}
-                                  </Typography>
-                                ))
-                              : metadata[displayedMetadata[1].column] && (
-                                  <Typography
-                                    variant="body2"
-                                    sx={{
-                                      marginTop: '0.25rem',
-                                      fontWeight: 600,
-                                    }}
-                                  >
-                                    {metadata[displayedMetadata[1].column]
-                                      ? `${metadata[displayedMetadata[1].column]?.slice(0, 25)}..`
-                                      : ''}
-                                  </Typography>
-                                ))}
+                              {metadata && displayedMetadata?.length === 2 && (
+                                <Typography
+                                  variant="body2"
+                                  sx={{
+                                    marginBottom: '0.25rem',
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {metadata[displayedMetadata[0].column]
+                                    ? `${metadata[displayedMetadata[0].column]?.slice(0, 25)}..`
+                                    : ''}
+                                </Typography>
+                              )}
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  margin: '0.75rem 0',
+                                  fontStyle: 'italic',
+                                }}
+                              >
+                                {truncatedFolderName}
+                              </Typography>
+                              {metadata &&
+                                (displayedMetadata?.length !== 2
+                                  ? displayedMetadata?.map((field: any) => (
+                                      <Typography
+                                        key={field.column}
+                                        variant="body2"
+                                        sx={{
+                                          marginBottom: '0.25rem',
+                                          fontWeight: 600,
+                                        }}
+                                      >
+                                        {metadata[field.column]
+                                          ? `${metadata[field.column]?.slice(0, 25)}..`
+                                          : ''}
+                                      </Typography>
+                                    ))
+                                  : metadata[displayedMetadata[1].column] && (
+                                      <Typography
+                                        variant="body2"
+                                        sx={{
+                                          marginTop: '0.25rem',
+                                          fontWeight: 600,
+                                        }}
+                                      >
+                                        {metadata[displayedMetadata[1].column]
+                                          ? `${metadata[displayedMetadata[1].column]?.slice(0, 25)}..`
+                                          : ''}
+                                      </Typography>
+                                    ))}
+                            </Box>
+                          </Box>
                         </Box>
                       </Box>
-                    </Box>
-                  </Box>
-                </Tooltip>
-              );
-            },
-          )}
-        </Box>
-      </Box>
+                    </Tooltip>
+                  );
+                },
+              )}
+            </Box>
+          </Box>
 
-      <Pagination
-        count={totalPages}
-        page={currentPage}
-        onChange={handlePageChange}
-        variant="outlined"
-        shape="rounded"
-        sx={{ display: 'flex', justifyContent: 'center', marginTop: '7.5rem' }}
-      />
+          <Pagination
+            count={totalPages}
+            page={currentPage}
+            onChange={handlePageChange}
+            variant="outlined"
+            shape="rounded"
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              marginTop: '7.5rem',
+            }}
+          />
 
-      <Box
-        sx={{ display: 'flex', justifyContent: 'center', marginTop: '2rem' }}
-      >
-        <TextField
-          id="pageInput"
-          type="number"
-          InputProps={{ inputProps: { min: 1, max: totalPages } }}
-          placeholder="Enter Page No."
-          sx={{ width: '10rem', marginRight: '0.5rem', textAlign: 'center' }}
-        />
-        <Button variant="contained" onClick={handleGoToPage}>
-          Go to Page
-        </Button>
-      </Box>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              marginTop: '2rem',
+            }}
+          >
+            <TextField
+              id="pageInput"
+              type="number"
+              InputProps={{ inputProps: { min: 1, max: totalPages } }}
+              placeholder="Enter Page No."
+              sx={{
+                width: '10rem',
+                marginRight: '0.5rem',
+                textAlign: 'center',
+              }}
+            />
+            <Button variant="contained" onClick={handleGoToPage}>
+              Go to Page
+            </Button>
+          </Box>
+        </>
+      )}
     </Container>
   );
 };

@@ -15,6 +15,7 @@ import {
   Card,
   CardContent,
   CardActions,
+  CircularProgress,
 } from '@mui/material';
 
 interface Annotation {
@@ -51,6 +52,8 @@ const BookDetails: React.FC = () => {
 
   const [settings, setSettings] = useState<any>({});
 
+  const [loading, setLoading] = useState(true);
+
   const loadSettings = async () => {
     const settings = await window.electron.ipcRenderer.invoke('settings:load');
     setSettings(settings);
@@ -60,10 +63,18 @@ const BookDetails: React.FC = () => {
   };
 
   useEffect(() => {
-    loadSettings();
-    loadBookDetails();
-    loadAnnotations();
-    loadVolumeNotes();
+    const loadAllData = async () => {
+      setLoading(true); // Start loading
+
+      await loadSettings();
+      await loadBookDetails();
+      await loadAnnotations();
+      await loadVolumeNotes();
+
+      setLoading(false); // Stop loading after everything is fetched
+    };
+
+    loadAllData();
   }, [bookId]);
 
   useEffect(() => {
@@ -269,216 +280,268 @@ const BookDetails: React.FC = () => {
     <Container
       sx={{ padding: '2rem 5rem', fontFamily: 'Montserrat, sans-serif' }}
     >
-      <Button
-        variant="outlined"
-        onClick={() => navigate('/')}
-        sx={{ marginBottom: '1rem' }}
-      >
-        Back to Books
-      </Button>
-
-      <Box sx={{ marginBottom: '2rem' }}>
-        <Typography variant="h5" gutterBottom>
-          Book Details
-        </Typography>
-        <Typography>
-          <strong>ID:</strong> {bookId}
-        </Typography>
-        {bookMetadata &&
-          Object.keys(bookMetadata).length > 0 &&
-          settings.metadataFields?.map(
-            (field: { column: string; label: string }) => (
-              <Typography key={field.column}>
-                <strong>{field.label}:</strong>{' '}
-                {bookMetadata?.[field.column as keyof typeof bookMetadata] ||
-                  'N/A'}
-              </Typography>
-            ),
-          )}
-      </Box>
-
-      <Box sx={{ marginBottom: '2rem' }}>
-        <Typography variant="h6" gutterBottom>
-          Progress
-        </Typography>
-        <Box
-          sx={{
-            width: '100%',
-            backgroundColor: '#e0e0e0',
-            borderRadius: '4px',
-          }}
-        >
-          <Box
-            sx={{
-              width: `${bookCompletion}%`,
-              backgroundColor: '#AFE1AF',
-              color: 'black',
-              padding: '0.5rem',
-              borderRadius: '4px',
-              textAlign: 'center',
-              fontWeight: 500,
-            }}
-          >
-            {bookCompletion}%
-          </Box>
-        </Box>
-      </Box>
-
-      <Box sx={{ marginBottom: '2rem' }}>
-        <Typography variant="h6" gutterBottom>
-          Volume Notes
-        </Typography>
-        <TextField
-          multiline
-          rows={3}
-          variant="outlined"
-          fullWidth
-          value={volumeNotes}
-          onChange={(e) => setVolumeNotes(e.target.value)}
-        />
+      {loading ? (
         <Box
           sx={{
             display: 'flex',
-            justifyContent: 'flex-end',
-            marginTop: '1rem',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100vh',
           }}
         >
-          <Button
-            variant="contained"
-            color="success"
-            onClick={handleSaveNotes}
-            sx={{ marginRight: '1rem' }}
-          >
-            Save
-          </Button>
-          <Button variant="contained" color="error" onClick={handleClearNotes}>
-            Clear
-          </Button>
+          <CircularProgress />
+          <Typography sx={{ marginTop: '1rem' }}>Loading...</Typography>
         </Box>
-      </Box>
-
-      <Box
-        sx={{ marginBottom: '2rem', display: 'flex', justifyContent: 'center' }}
-      >
-        <form onSubmit={handleRangeSubmit} style={{ display: 'flex' }}>
-          <TextField
-            label="From Page"
-            type="number"
-            value={fromPage}
-            onChange={(e) => setFromPage(e.target.value)}
-            sx={{ marginRight: '0.5rem' }}
-            required
-          />
-          <TextField
-            label="To Page"
-            type="number"
-            value={toPage}
-            onChange={(e) => setToPage(e.target.value)}
-            sx={{ marginRight: '0.5rem' }}
-            required
-          />
-          <FormControl required sx={{ marginRight: '0.5rem' }}>
-            <InputLabel>Select Label</InputLabel>
-            <Select
-              value={rangeState}
-              onChange={(e) => setRangeState(e.target.value as string)}
-              displayEmpty
-              inputProps={{ 'aria-label': 'Without label' }}
-            >
-              <MenuItem value="" disabled>
-                Select Label
-              </MenuItem>
-              {states.map((state, index) => (
-                <MenuItem key={index} value={state}>
-                  {state}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <Button type="submit" variant="contained" color="success">
-            Save
+      ) : (
+        <>
+          <Button
+            variant="outlined"
+            onClick={() => navigate('/')}
+            sx={{ marginBottom: '1rem' }}
+          >
+            Back to Books
           </Button>
-        </form>
-      </Box>
 
-      <Box
-        sx={{ marginBottom: '2rem', display: 'flex', justifyContent: 'center' }}
-      >
-        <Button variant="contained" color="warning" onClick={handleMarkAllAs}>
-          Mark all as {defaultLabel}
-        </Button>
-      </Box>
+          <Box sx={{ marginBottom: '2rem' }}>
+            <Typography variant="h5" gutterBottom>
+              Book Details
+            </Typography>
+            <Typography>
+              <strong>ID:</strong> {bookId}
+            </Typography>
+            {bookMetadata &&
+              Object.keys(bookMetadata).length > 0 &&
+              settings.metadataFields?.map(
+                (field: { column: string; label: string }) => (
+                  <Typography key={field.column}>
+                    <strong>{field.label}:</strong>{' '}
+                    {bookMetadata?.[
+                      field.column as keyof typeof bookMetadata
+                    ] || 'N/A'}
+                  </Typography>
+                ),
+              )}
+          </Box>
 
-      <hr />
+          <Box sx={{ marginBottom: '2rem' }}>
+            <Typography variant="h6" gutterBottom>
+              Progress
+            </Typography>
+            <Box
+              sx={{
+                width: '100%',
+                backgroundColor: '#e0e0e0',
+                borderRadius: '4px',
+              }}
+            >
+              <Box
+                sx={{
+                  width: `${bookCompletion}%`,
+                  backgroundColor: '#AFE1AF',
+                  color: 'black',
+                  padding: '0.5rem',
+                  borderRadius: '4px',
+                  textAlign: 'center',
+                  fontWeight: 500,
+                }}
+              >
+                {bookCompletion}%
+              </Box>
+            </Box>
+          </Box>
 
-      <Box
-        sx={{ marginBottom: '2rem', display: 'flex', justifyContent: 'center' }}
-      >
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleJumpToUnannotated}
-          disabled={bookCompletion === 100}
-        >
-          Jump to Next Unannotated Work
-        </Button>
-      </Box>
+          <Box sx={{ marginBottom: '2rem' }}>
+            <Typography variant="h6" gutterBottom>
+              Volume Notes
+            </Typography>
+            <TextField
+              multiline
+              rows={3}
+              variant="outlined"
+              fullWidth
+              value={volumeNotes}
+              onChange={(e) => setVolumeNotes(e.target.value)}
+            />
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                marginTop: '1rem',
+              }}
+            >
+              <Button
+                variant="contained"
+                color="success"
+                onClick={handleSaveNotes}
+                sx={{ marginRight: '1rem' }}
+              >
+                Save
+              </Button>
+              <Button
+                variant="contained"
+                color="error"
+                onClick={handleClearNotes}
+              >
+                Clear
+              </Button>
+            </Box>
+          </Box>
 
-      {paginatePages(currentPage).map((page, index) => (
-        <React.Fragment key={index}>
-          <Card sx={{ marginBottom: '2rem' }}>
-            <CardContent>
-              <Typography variant="h6" sx={{ color: '#d70040' }}>
-                Page {parseInt(page.fileName.replace('.txt', ''), 10)}
-              </Typography>
-              <pre>{page.content}</pre>
-            </CardContent>
-            <CardActions>
-              {states.map((state, idx) => (
-                <Button
-                  key={idx}
-                  variant="contained"
-                  sx={{
-                    backgroundColor: isStateActive(page.fileName, state)
-                      ? '#AFE1AF'
-                      : '#E5E4E2',
-                    color: 'black',
-                    marginRight: '0.5rem',
-                  }}
-                  onClick={() => handleAnnotationClick(page.fileName, state)}
+          <Box
+            sx={{
+              marginBottom: '2rem',
+              display: 'flex',
+              justifyContent: 'center',
+            }}
+          >
+            <form onSubmit={handleRangeSubmit} style={{ display: 'flex' }}>
+              <TextField
+                label="From Page"
+                type="number"
+                value={fromPage}
+                onChange={(e) => setFromPage(e.target.value)}
+                sx={{ marginRight: '0.5rem' }}
+                required
+              />
+              <TextField
+                label="To Page"
+                type="number"
+                value={toPage}
+                onChange={(e) => setToPage(e.target.value)}
+                sx={{ marginRight: '0.5rem' }}
+                required
+              />
+              <FormControl required sx={{ marginRight: '0.5rem' }}>
+                <InputLabel>Select Label</InputLabel>
+                <Select
+                  value={rangeState}
+                  onChange={(e) => setRangeState(e.target.value as string)}
+                  displayEmpty
+                  inputProps={{ 'aria-label': 'Without label' }}
                 >
-                  {state}
-                </Button>
-              ))}
-            </CardActions>
-          </Card>
-          {index % 2 !== 0 && <Divider sx={{ marginBottom: '2rem' }} />}
-        </React.Fragment>
-      ))}
+                  <MenuItem value="" disabled>
+                    Select Label
+                  </MenuItem>
+                  {states.map((state, index) => (
+                    <MenuItem key={index} value={state}>
+                      {state}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Button type="submit" variant="contained" color="success">
+                Save
+              </Button>
+            </form>
+          </Box>
 
-      <Pagination
-        count={totalPages}
-        page={currentPage}
-        onChange={handlePageChange}
-        variant="outlined"
-        shape="rounded"
-        sx={{ display: 'flex', justifyContent: 'center', marginTop: '7.5rem' }}
-      />
+          <Box
+            sx={{
+              marginBottom: '2rem',
+              display: 'flex',
+              justifyContent: 'center',
+            }}
+          >
+            <Button
+              variant="contained"
+              color="warning"
+              onClick={handleMarkAllAs}
+            >
+              Mark all as {defaultLabel}
+            </Button>
+          </Box>
 
-      <Box
-        sx={{ display: 'flex', justifyContent: 'center', marginTop: '2rem' }}
-      >
-        <TextField
-          id="pageInput"
-          type="number"
-          InputProps={{ inputProps: { min: 1, max: totalPages } }}
-          placeholder="Enter Page No."
-          sx={{ width: '10rem', marginRight: '0.5rem', textAlign: 'center' }}
-        />
-        <Button variant="contained" onClick={handleGoToPage}>
-          Go to Page
-        </Button>
-      </Box>
+          <hr />
+
+          <Box
+            sx={{
+              marginBottom: '2rem',
+              display: 'flex',
+              justifyContent: 'center',
+            }}
+          >
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleJumpToUnannotated}
+              disabled={bookCompletion === 100}
+            >
+              Jump to Next Unannotated Page
+            </Button>
+          </Box>
+
+          {paginatePages(currentPage).map((page, index) => (
+            <React.Fragment key={index}>
+              <Card sx={{ marginBottom: '2rem' }}>
+                <CardContent>
+                  <Typography variant="h6" sx={{ color: '#d70040' }}>
+                    Page {parseInt(page.fileName.replace('.txt', ''), 10)}
+                  </Typography>
+                  <pre>{page.content}</pre>
+                </CardContent>
+                <CardActions>
+                  {states.map((state, idx) => (
+                    <Button
+                      key={idx}
+                      variant="contained"
+                      sx={{
+                        backgroundColor: isStateActive(page.fileName, state)
+                          ? '#AFE1AF'
+                          : '#E5E4E2',
+                        color: 'black',
+                        marginRight: '0.5rem',
+                      }}
+                      onClick={() =>
+                        handleAnnotationClick(page.fileName, state)
+                      }
+                    >
+                      {state}
+                    </Button>
+                  ))}
+                </CardActions>
+              </Card>
+              {index % 2 !== 0 && <Divider sx={{ marginBottom: '2rem' }} />}
+            </React.Fragment>
+          ))}
+
+          <Pagination
+            count={totalPages}
+            page={currentPage}
+            onChange={handlePageChange}
+            variant="outlined"
+            shape="rounded"
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              marginTop: '7.5rem',
+            }}
+          />
+
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              marginTop: '2rem',
+            }}
+          >
+            <TextField
+              id="pageInput"
+              type="number"
+              InputProps={{ inputProps: { min: 1, max: totalPages } }}
+              placeholder="Enter Page No."
+              sx={{
+                width: '10rem',
+                marginRight: '0.5rem',
+                textAlign: 'center',
+              }}
+            />
+            <Button variant="contained" onClick={handleGoToPage}>
+              Go to Page
+            </Button>
+          </Box>
+        </>
+      )}
     </Container>
   );
 };

@@ -4,8 +4,8 @@ import { CssBaseline } from '@mui/material';
 
 import Navbar from './components/Navbar';
 import BookList from './components/BookList';
-import Settings from './components/Settings';
 import BookDetails from './components/BookDetails';
+import SettingsManager from './components/settings/SettingsManager';
 
 export default function App() {
   return (
@@ -14,7 +14,7 @@ export default function App() {
       <Navbar />
       <Routes>
         <Route path="/" element={<BookList />} />
-        <Route path="/settings" element={<Settings />} />
+        <Route path="/settings" element={<SettingsManager />} />
         <Route path="/book/:bookId" element={<BookDetails />} />
       </Routes>
     </Router>

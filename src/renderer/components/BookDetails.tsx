@@ -18,6 +18,9 @@ import {
   CircularProgress,
   IconButton,
   LinearProgress,
+  Chip,
+  FormControlLabel,
+  Checkbox,
 } from '@mui/material';
 import { ArrowBackOutlined } from '@mui/icons-material';
 
@@ -57,8 +60,39 @@ const BookDetails: React.FC = () => {
 
   const [loading, setLoading] = useState(true);
 
-  const loadSettings = async () => {
-    const settings = await window.electron.ipcRenderer.invoke('settings:load');
+  const [annotationType, setAnnotationType] = useState<'prose' | 'poetry' | ''>(
+    '',
+  );
+
+  // Dynamically add labels
+  const [openLabelModal, setOpenLabelModal] = useState(false);
+  const [newLabel, setNewLabel] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [persistLabel, setPersistLabel] = useState(false);
+
+  useEffect(() => {
+    const fetchAnnotationType = async () => {
+      try {
+        if (annotationType) return; // Prevent re-fetching if already set
+        console.log('RENDERER: Invoking settings:getAnnotationType...');
+        const type = await window.electron.ipcRenderer.invoke(
+          'settings:getAnnotationType',
+        );
+        console.log('RENDERER: Annotation Type Retrieved:', type);
+        setAnnotationType(type);
+      } catch (error) {
+        console.error('RENDERER: Error retrieving annotation type:', error);
+      }
+    };
+
+    fetchAnnotationType();
+  }, []);
+
+  const loadSettings = async (type: 'prose' | 'poetry') => {
+    const settings = await window.electron.ipcRenderer.invoke(
+      'settings:load',
+      type,
+    );
     setSettings(settings);
     setStates(settings.labels || []);
     setPagesPerAppPage(parseInt(settings.pagesPerAppPage, 10) || 1);
@@ -66,33 +100,68 @@ const BookDetails: React.FC = () => {
   };
 
   useEffect(() => {
+    const loadSettings = async (type: 'prose' | 'poetry') => {
+      try {
+        const loadedSettings = await window.electron.ipcRenderer.invoke(
+          'settings:load',
+          type,
+        );
+        console.log('🔍 LOADED SETTINGS:', loadedSettings);
+        setSettings(loadedSettings);
+      } catch (error) {
+        console.error('⚠️ ERROR LOADING SETTINGS:', error);
+      }
+    };
+
+    if (annotationType) {
+      loadSettings(annotationType);
+    }
+  }, [annotationType]);
+
+  useEffect(() => {
     const loadAllData = async () => {
-      setLoading(true); // Start loading
+      if (!annotationType) {
+        console.log(
+          'RENDERER: Skipping loadAllData() - Annotation Type not yet set.',
+        );
+        return; // Prevents running until annotationType is set
+      }
 
-      await loadSettings();
-      await loadBookDetails();
-      await loadAnnotations();
-      await loadVolumeNotes();
+      setLoading(true);
+      console.log('RENDERER: Using annotationType:', annotationType);
 
-      setLoading(false); // Stop loading after everything is fetched
+      try {
+        await loadSettings(annotationType);
+        await loadBookDetails(annotationType);
+        await loadAnnotations(annotationType);
+        await loadVolumeNotes(annotationType);
+      } catch (error) {
+        console.error('RENDERER: Error loading data:', error);
+      }
+
+      setLoading(false);
     };
 
     loadAllData();
-  }, [bookId]);
+  }, [bookId, annotationType]); // Now waits until annotationType is available
 
   useEffect(() => {
-    calculateBookCompletion();
-  }, [pages, annotations, pagesPerAppPage]);
+    if (annotationType) {
+      calculateBookCompletion();
+    }
+  }, [annotationType, pages, annotations, pagesPerAppPage]);
 
-  const loadBookDetails = async () => {
+  const loadBookDetails = async (type: 'prose' | 'poetry') => {
     const loadedPages = await window.electron.ipcRenderer.invoke(
       'getBookContents',
       bookId,
     );
     setPages(loadedPages);
 
-    const settingsData =
-      await window.electron.ipcRenderer.invoke('settings:load');
+    const settingsData = await window.electron.ipcRenderer.invoke(
+      'settings:load',
+      type,
+    );
     setSettings(settingsData);
 
     let metadataJson: any = {};
@@ -111,10 +180,44 @@ const BookDetails: React.FC = () => {
   };
 
   const calculateBookCompletion = () => {
-    const totalPages = pages.length;
-    const labeledPages = annotations.length;
-    const completionPercentage = Math.round((labeledPages / totalPages) * 100);
-    setBookCompletion(completionPercentage);
+    if (!annotationType) return;
+
+    if (annotationType === 'prose') {
+      // Prose: Completion is based on the number of labeled pages
+      const totalPages = pages.length;
+      const labeledPages = annotations.length;
+      const completionPercentage = totalPages
+        ? Math.round((labeledPages / totalPages) * 100)
+        : 0;
+      setBookCompletion(completionPercentage);
+    } else if (annotationType === 'poetry') {
+      // Poetry: Completion is based on the number of categories with at least one label selected
+      if (!settings.labelCategories || settings.labelCategories.length === 0) {
+        setBookCompletion(0);
+        return;
+      }
+
+      const totalCategories = settings.labelCategories.length;
+      let selectedCategoriesCount = 0;
+
+      settings.labelCategories.forEach(
+        (category: { name: string; labels: string[] }) => {
+          const hasSelection = annotations.some((annotation) =>
+            category.labels.includes(annotation.state),
+          );
+
+          if (hasSelection) {
+            selectedCategoriesCount += 1;
+          }
+        },
+      );
+
+      const completionPercentage = Math.round(
+        (selectedCategoriesCount / totalCategories) * 100,
+      );
+
+      setBookCompletion(completionPercentage);
+    }
   };
 
   const paginatePages = (page: number) => {
@@ -123,23 +226,27 @@ const BookDetails: React.FC = () => {
     return pages.slice(startIndex, endIndex);
   };
 
-  const loadAnnotations = async () => {
+  const loadAnnotations = async (type: 'prose' | 'poetry') => {
     const loadedAnnotations = await window.electron.ipcRenderer.invoke(
       'loadAnnotations',
-      bookId,
+      { type: annotationType, bookId },
     );
     setAnnotations(loadedAnnotations);
   };
 
-  const loadVolumeNotes = async () => {
+  const loadVolumeNotes = async (type: 'prose' | 'poetry') => {
     const loadedNotes = await window.electron.ipcRenderer.invoke(
       'loadVolumeNotes',
-      bookId,
+      { type: annotationType, bookId },
     );
     setVolumeNotes(loadedNotes);
   };
 
-  const handleAnnotationClick = async (page: string, state: string) => {
+  const handleAnnotationClick = async (
+    page: string,
+    state: string,
+    category?: string,
+  ) => {
     const existingAnnotation = annotations.find(
       (annotation) => annotation.page === page && annotation.state === state,
     );
@@ -151,17 +258,37 @@ const BookDetails: React.FC = () => {
       );
       setAnnotations(updatedAnnotations);
       await window.electron.ipcRenderer.invoke('saveAnnotation', {
+        type: annotationType,
         bookId,
         page,
         state: '',
       });
     } else {
-      const updatedAnnotations = annotations.filter(
-        (annotation) => annotation.page !== page,
-      );
-      updatedAnnotations.push({ bookId, page, state });
+      let updatedAnnotations;
+      if (annotationType === 'poetry' && settings.allowMultipleLabels) {
+        updatedAnnotations = [...annotations, { bookId, page, state }];
+      } else if (annotationType === 'poetry' && !settings.allowMultipleLabels) {
+        // Remove other annotations **only in the same category**
+        updatedAnnotations = annotations.filter(
+          (annotation) =>
+            annotation.page !== page ||
+            !settings.labelCategories.some(
+              (cat: any) =>
+                cat.name === category && cat.labels.includes(annotation.state),
+            ),
+        );
+        updatedAnnotations.push({ bookId, page, state });
+      } else {
+        // Default behavior for prose (replace annotation)
+        updatedAnnotations = annotations.filter(
+          (annotation) => annotation.page !== page,
+        );
+        updatedAnnotations.push({ bookId, page, state });
+      }
+
       setAnnotations(updatedAnnotations);
       await window.electron.ipcRenderer.invoke('saveAnnotation', {
+        type: annotationType,
         bookId,
         page,
         state,
@@ -177,6 +304,7 @@ const BookDetails: React.FC = () => {
 
   const handleSaveNotes = async () => {
     await window.electron.ipcRenderer.invoke('saveVolumeNotes', {
+      type: annotationType,
       bookId,
       note: volumeNotes,
     });
@@ -184,7 +312,10 @@ const BookDetails: React.FC = () => {
   };
 
   const handleClearNotes = async () => {
-    await window.electron.ipcRenderer.invoke('clearVolumeNotes', bookId);
+    await window.electron.ipcRenderer.invoke('clearVolumeNotes', {
+      type: annotationType,
+      bookId,
+    });
     setVolumeNotes('');
     alert('Volume note cleared!');
   };
@@ -279,6 +410,61 @@ const BookDetails: React.FC = () => {
     }
   };
 
+  const handleAddLabel = async () => {
+    if (!newLabel.trim()) return;
+
+    // ✅ Always add the label to the annotations for this book
+    setAnnotations([
+      ...annotations,
+      {
+        bookId: bookId || '',
+        page: annotationType === 'poetry' ? 'poetry' : bookId || '',
+        state: newLabel,
+      },
+    ]);
+
+    // ✅ Update the local UI state to show the label immediately
+    setSettings((prevSettings: any) => {
+      const updatedSettings = { ...prevSettings };
+      const categoryIndex = updatedSettings.labelCategories.findIndex(
+        (c: { name: string }) => c.name === selectedCategory,
+      );
+
+      if (categoryIndex !== -1) {
+        updatedSettings.labelCategories[categoryIndex].labels = [
+          ...updatedSettings.labelCategories[categoryIndex].labels,
+          newLabel,
+        ];
+      }
+
+      return updatedSettings;
+    });
+
+    // ✅ Persist the label to global settings only if "Persist" is checked
+    if (persistLabel) {
+      const updatedSettings = await window.electron.ipcRenderer.invoke(
+        'settings:load',
+        annotationType,
+      );
+
+      const categoryIndex = updatedSettings.labelCategories.findIndex(
+        (c: { name: string }) => c.name === selectedCategory,
+      );
+
+      if (categoryIndex !== -1) {
+        updatedSettings.labelCategories[categoryIndex].labels.push(newLabel);
+      }
+
+      await window.electron.ipcRenderer.invoke('settings:save', {
+        type: annotationType,
+        settings: updatedSettings,
+      });
+    }
+
+    setOpenLabelModal(false);
+    setNewLabel('');
+  };
+
   return (
     <Container
       sx={{ padding: '2rem 5rem', fontFamily: 'Montserrat, sans-serif' }}
@@ -368,7 +554,7 @@ const BookDetails: React.FC = () => {
               gutterBottom
               sx={{ fontSize: '1.125rem', fontWeight: 'bold' }}
             >
-              Volume Notes
+              {annotationType === 'poetry' ? 'Poem Notes' : 'Volume Notes'}
             </Typography>
             <TextField
               multiline
@@ -406,189 +592,360 @@ const BookDetails: React.FC = () => {
             </Box>
           </Box>
 
-          <Box
-            sx={{
-              marginBottom: '2rem',
-              display: 'flex',
-              justifyContent: 'center',
-            }}
-          >
-            <form onSubmit={handleRangeSubmit} style={{ display: 'flex' }}>
-              <TextField
-                label="From Page"
-                type="number"
-                size="small"
-                value={fromPage}
-                onChange={(e) => setFromPage(e.target.value)}
-                sx={{ marginRight: '0.5rem' }}
-                required
-              />
-              <TextField
-                label="To Page"
-                type="number"
-                size="small"
-                value={toPage}
-                onChange={(e) => setToPage(e.target.value)}
-                sx={{ marginRight: '0.5rem' }}
-                required
-              />
-              <FormControl required sx={{ marginRight: '0.5rem' }}>
-                {/* <InputLabel>Select Label</InputLabel> */}
-                <Select
-                  value={rangeState}
-                  size="small"
-                  onChange={(e) => setRangeState(e.target.value as string)}
-                  displayEmpty
-                  inputProps={{ 'aria-label': 'Without label' }}
-                >
-                  <MenuItem value="" disabled>
-                    Select Label
-                  </MenuItem>
-                  {states.map((state, index) => (
-                    <MenuItem key={index} value={state}>
-                      {state}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <Button
-                type="submit"
-                size="small"
-                variant="contained"
-                color="success"
-                sx={{ fontWeight: 'bold' }}
-              >
-                Save
-              </Button>
-            </form>
-          </Box>
-
-          <Box
-            sx={{
-              marginBottom: '2rem',
-              display: 'flex',
-              justifyContent: 'center',
-            }}
-          >
-            <Button
-              variant="contained"
-              color="secondary"
-              size="small"
-              onClick={handleMarkAllAs}
+          {annotationType === 'prose' && (
+            <Box
+              sx={{
+                marginBottom: '2rem',
+                display: 'flex',
+                justifyContent: 'center',
+              }}
             >
-              Mark all as {defaultLabel}
-            </Button>
-          </Box>
+              <form onSubmit={handleRangeSubmit} style={{ display: 'flex' }}>
+                <TextField
+                  label="From Page"
+                  type="number"
+                  size="small"
+                  value={fromPage}
+                  onChange={(e) => setFromPage(e.target.value)}
+                  sx={{ marginRight: '0.5rem' }}
+                  required
+                />
+                <TextField
+                  label="To Page"
+                  type="number"
+                  size="small"
+                  value={toPage}
+                  onChange={(e) => setToPage(e.target.value)}
+                  sx={{ marginRight: '0.5rem' }}
+                  required
+                />
+                <FormControl required sx={{ marginRight: '0.5rem' }}>
+                  {/* <InputLabel>Select Label</InputLabel> */}
+                  <Select
+                    value={rangeState}
+                    size="small"
+                    onChange={(e) => setRangeState(e.target.value as string)}
+                    displayEmpty
+                    inputProps={{ 'aria-label': 'Without label' }}
+                  >
+                    <MenuItem value="" disabled>
+                      Select Label
+                    </MenuItem>
+                    {states.map((state, index) => (
+                      <MenuItem key={index} value={state}>
+                        {state}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <Button
+                  type="submit"
+                  size="small"
+                  variant="contained"
+                  color="success"
+                  sx={{ fontWeight: 'bold' }}
+                >
+                  Save
+                </Button>
+              </form>
+            </Box>
+          )}
+
+          {annotationType === 'prose' && (
+            <Box
+              sx={{
+                marginBottom: '2rem',
+                display: 'flex',
+                justifyContent: 'center',
+              }}
+            >
+              <Button
+                variant="contained"
+                color="secondary"
+                size="small"
+                onClick={handleMarkAllAs}
+              >
+                Mark all as {defaultLabel}
+              </Button>
+            </Box>
+          )}
 
           <hr />
 
-          <Box
-            sx={{
-              marginBottom: '2rem',
-              display: 'flex',
-              justifyContent: 'flex-end',
-            }}
-          >
-            <Button
-              variant="contained"
-              color="primary"
-              size="small"
-              onClick={handleJumpToUnannotated}
-              disabled={bookCompletion === 100}
+          {annotationType === 'prose' && (
+            <Box
+              sx={{
+                marginBottom: '2rem',
+                display: 'flex',
+                justifyContent: 'flex-end',
+              }}
             >
-              Jump to Next Unannotated Page
-            </Button>
-          </Box>
+              <Button
+                variant="contained"
+                color="primary"
+                size="small"
+                onClick={handleJumpToUnannotated}
+                disabled={bookCompletion === 100}
+              >
+                Jump to Next Unannotated Page
+              </Button>
+            </Box>
+          )}
 
-          {paginatePages(currentPage).map((page, index) => (
-            <React.Fragment key={index}>
-              <Card sx={{ marginBottom: '2rem' }}>
-                <CardContent>
-                  <Typography
-                    variant="h6"
-                    sx={{ color: '#d70040', fontWeight: 'bold' }}
-                  >
-                    Page {parseInt(page.fileName.replace('.txt', ''), 10)}
+          {annotationType === 'poetry' ? (
+            <>
+              <Card sx={{ marginBottom: '2rem', padding: '1rem' }}>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    color: '#d70040',
+                    fontWeight: 'bold',
+                    marginBottom: '1rem',
+                  }}
+                >
+                  Poem Content
+                </Typography>
+                {pages.map((page, index) => (
+                  <Typography key={index} sx={{ marginBottom: '1rem' }}>
+                    {page.content}
                   </Typography>
-                  <pre>{page.content}</pre>
-                </CardContent>
-                <CardActions>
-                  {states.map((state, idx) => (
-                    <Button
-                      key={idx}
-                      variant="contained"
-                      sx={{
-                        backgroundColor: isStateActive(page.fileName, state)
-                          ? '#AFE1AF'
-                          : '#E5E4E2',
-                        color: 'black',
-                        marginRight: '0.5rem',
-                        fontWeight: 'bold'
-                      }}
-                      onClick={() =>
-                        handleAnnotationClick(page.fileName, state)
-                      }
-                    >
-                      {state}
-                    </Button>
-                  ))}
-                </CardActions>
+                ))}
               </Card>
-              {index % 2 !== 0 && <Divider sx={{ marginBottom: '2rem' }} />}
-            </React.Fragment>
-          ))}
 
-          <Pagination
-            count={totalPages}
-            page={currentPage}
-            onChange={handlePageChange}
-            variant="outlined"
-            shape="circular"
-            sx={{
-              display: 'flex',
-              justifyContent: 'center',
-              marginTop: '7.5rem',
-              '& .Mui-selected': {
-                backgroundColor: '#13294B !important', // Set the background color of the selected page
-                color: 'white',
-              },
-              '& .MuiPaginationItem-root': {
-                '&:hover': {
-                  backgroundColor: '#145ea8',
+              {/* 🔹 Debugging Output */}
+              {console.log(
+                '📌 Rendering Categories:',
+                settings.labelCategories,
+              )}
+
+              {settings.labelCategories &&
+              settings.labelCategories.length > 0 ? (
+                settings.labelCategories.map(
+                  (category: { name: string; labels: string[] }) => (
+                    <Box key={category.name} sx={{ marginBottom: '1rem' }}>
+                      <Typography
+                        variant="body1"
+                        sx={{
+                          fontWeight: 'bold',
+                          color: '#333',
+                          marginBottom: '0.5rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                        }}
+                      >
+                        {category.name}
+                        <IconButton
+                          size="small"
+                          onClick={() => {
+                            setSelectedCategory(category.name);
+                            setOpenLabelModal(true);
+                          }}
+                          sx={{ color: '#1976D2' }}
+                        >
+                          ➕
+                        </IconButton>
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                        {category.labels && category.labels.length > 0 ? (
+                          category.labels.map((label, index) => (
+                            <Button
+                              key={index}
+                              variant="contained"
+                              sx={{
+                                backgroundColor: isStateActive(
+                                  bookId || '',
+                                  label,
+                                )
+                                  ? '#AFE1AF'
+                                  : '#E5E4E2',
+                                color: 'black',
+                                fontWeight: 'bold',
+                              }}
+                              onClick={() =>
+                                handleAnnotationClick(
+                                  bookId || '',
+                                  label,
+                                  category.name,
+                                )
+                              }
+                            >
+                              {label}
+                            </Button>
+                          ))
+                        ) : (
+                          <Typography sx={{ color: 'gray' }}>
+                            No labels available
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
+                  ),
+                )
+              ) : (
+                <Typography sx={{ color: 'gray' }}>
+                  No categories available
+                </Typography>
+              )}
+            </>
+          ) : (
+            paginatePages(currentPage).map((page, index) => (
+              <React.Fragment key={index}>
+                <Card sx={{ marginBottom: '2rem' }}>
+                  <CardContent>
+                    <Typography
+                      variant="h6"
+                      sx={{ color: '#d70040', fontWeight: 'bold' }}
+                    >
+                      Page {parseInt(page.fileName.replace('.txt', ''), 10)}
+                    </Typography>
+                    <pre>{page.content}</pre>
+                  </CardContent>
+                  <CardActions>
+                    {states.map((state, idx) => (
+                      <Button
+                        key={idx}
+                        variant="contained"
+                        sx={{
+                          backgroundColor: isStateActive(page.fileName, state)
+                            ? '#AFE1AF'
+                            : '#E5E4E2',
+                          color: 'black',
+                          marginRight: '0.5rem',
+                          fontWeight: 'bold',
+                        }}
+                        onClick={() =>
+                          handleAnnotationClick(page.fileName, state)
+                        }
+                      >
+                        {state}
+                      </Button>
+                    ))}
+                  </CardActions>
+                </Card>
+                {index % 2 !== 0 && <Divider sx={{ marginBottom: '2rem' }} />}
+              </React.Fragment>
+            ))
+          )}
+
+          {annotationType !== 'poetry' && (
+            <Pagination
+              count={totalPages}
+              page={currentPage}
+              onChange={handlePageChange}
+              variant="outlined"
+              shape="circular"
+              sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                marginTop: '7.5rem',
+                '& .Mui-selected': {
+                  backgroundColor: '#13294B !important', // Set the background color of the selected page
                   color: 'white',
                 },
-              },
-            }}
-          />
-
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'center',
-              marginTop: '2rem',
-            }}
-          >
-            <TextField
-              id="pageInput"
-              type="number"
-              size="small"
-              InputProps={{ inputProps: { min: 1, max: totalPages } }}
-              placeholder="Enter Page No."
-              sx={{
-                width: '10rem',
-                marginRight: '0.5rem',
-                textAlign: 'center',
+                '& .MuiPaginationItem-root': {
+                  '&:hover': {
+                    backgroundColor: '#145ea8',
+                    color: 'white',
+                  },
+                },
               }}
             />
-            <Button
-              size="small"
-              variant="contained"
-              onClick={handleGoToPage}
-              sx={{ fontWeight: 'bold', backgroundColor: '#13294B' }}
+          )}
+
+          {annotationType !== 'poetry' && (
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                marginTop: '2rem',
+              }}
             >
-              Go to Page
-            </Button>
-          </Box>
+              <TextField
+                id="pageInput"
+                type="number"
+                size="small"
+                InputProps={{ inputProps: { min: 1, max: totalPages } }}
+                placeholder="Enter Page No."
+                sx={{
+                  width: '10rem',
+                  marginRight: '0.5rem',
+                  textAlign: 'center',
+                }}
+              />
+              <Button
+                size="small"
+                variant="contained"
+                onClick={handleGoToPage}
+                sx={{ fontWeight: 'bold', backgroundColor: '#13294B' }}
+              >
+                Go to Page
+              </Button>
+            </Box>
+          )}
+
+          {openLabelModal && (
+            <Box
+              sx={{
+                position: 'fixed',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                backgroundColor: 'white',
+                padding: '2rem',
+                borderRadius: '8px',
+                boxShadow: 24,
+                zIndex: 10,
+                width: '300px',
+              }}
+            >
+              <Typography variant="h6" sx={{ marginBottom: '1rem' }}>
+                Add Label to {selectedCategory}
+              </Typography>
+
+              <TextField
+                fullWidth
+                size="small"
+                label="Label Name"
+                value={newLabel}
+                onChange={(e) => setNewLabel(e.target.value)}
+                sx={{ marginBottom: '1rem' }}
+              />
+
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={persistLabel}
+                    onChange={(e) => setPersistLabel(e.target.checked)}
+                  />
+                }
+                label="Persist Label?"
+              />
+
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginTop: '1rem',
+                }}
+              >
+                <Button
+                  variant="contained"
+                  color="error"
+                  onClick={() => setOpenLabelModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="contained"
+                  color="success"
+                  onClick={() => handleAddLabel()}
+                >
+                  Add
+                </Button>
+              </Box>
+            </Box>
+          )}
         </>
       )}
     </Container>

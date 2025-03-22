@@ -3,6 +3,8 @@ import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 export type Channels =
   | 'settings:load'
   | 'settings:save'
+  | 'settings:reset'
+  | 'settings:getAnnotationType'
   | 'dialog:openDirectory'
   | 'dialog:openFile'
   | 'getBookPageCount'

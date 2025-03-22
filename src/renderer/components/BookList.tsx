@@ -28,19 +28,36 @@ const BookList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const [loading, setLoading] = useState(true);
+  // Store annotation type
+  const [annotationType, setAnnotationType] = useState<'prose' | 'poetry' | ''>(''); 
+
 
   const navigate = useNavigate();
 
   useEffect(() => {
     const loadAllData = async () => {
       setLoading(true); // Start loading
-
-      await loadSettings();
-      await loadBooks();
-
+      console.log("RENDERER: Invoking settings:getAnnotationType...");
+  
+      try {
+        const type = await window.electron.ipcRenderer.invoke('settings:getAnnotationType'); 
+        console.log("RENDERER: Annotation Type Retrieved:", type);
+  
+        setAnnotationType(type);
+  
+        if (type) {
+          await loadSettings(type);
+          await loadBooks(type);
+        } else {
+          console.warn("RENDERER: Annotation type is undefined or empty!");
+        }
+      } catch (error) {
+        console.error("RENDERER: Error retrieving annotation type:", error);
+      }
+  
       setLoading(false); // Stop loading after everything is fetched
     };
-
+  
     loadAllData();
   }, []);
 
@@ -48,44 +65,60 @@ const BookList: React.FC = () => {
     filterBooks();
   }, [searchTerm, books]);
 
-  const loadSettings = async () => {
-    const loadedSettings =
-      await window.electron.ipcRenderer.invoke('settings:load');
+  const loadSettings = async (type: 'prose' | 'poetry' | '') => {
+    if (!type) return;
+    
+    const settingsType = type === 'poetry' ? 'poetry' : 'prose';
+    const loadedSettings = await window.electron.ipcRenderer.invoke('settings:load', settingsType);
+  
+    console.log(`LOADED SETTINGS FOR ${settingsType}:`, loadedSettings);
+  
     setSettings(loadedSettings);
   };
 
-  const loadBooks = async () => {
-    const settings = await window.electron.ipcRenderer.invoke('settings:load');
-    const booksDir = settings.booksDir;
-
-    if (booksDir) {
-      const foldersWithCompletion = await window.electron.ipcRenderer.invoke(
-        'getFoldersWithTxtFiles',
-        booksDir,
-      );
-
-      let metadataJson: any = {};
-      if (settings.isMetadataAvailable) {
-        metadataJson = await window.electron.ipcRenderer.invoke('loadMetadata');
-      }
-
-      const booksWithMetadata = foldersWithCompletion.map(
-        (folderObj: { folder: string; completion: number }) => {
-          const metadata = metadataJson[folderObj.folder] || {};
-          return {
-            folder: folderObj.folder,
-            completion: folderObj.completion || 0,
-            metadata,
-          };
-        },
-      );
-
-      setBooks(booksWithMetadata);
-      setFilteredBooks(booksWithMetadata);
-      updatePagination(booksWithMetadata.length, settings.booksPerPage);
-    } else {
+  const loadBooks = async (type: 'prose' | 'poetry' | '') => {
+    if (!type) return;
+  
+    const settingsType = type === 'poetry' ? 'poetry' : 'prose';
+    const settings = await window.electron.ipcRenderer.invoke('settings:load', settingsType);
+  
+    console.log(`LOADED BOOK SETTINGS FOR ${settingsType}:`, settings);
+  
+    const booksDir = settings.collectionsDir; // Ensure this is correct for poetry
+  
+    if (!booksDir) {
+      console.error('ERROR: booksDir is undefined!');
       alert('No books directory set in settings.');
+      return;
     }
+  
+    console.log("RENDERER: Fetching folders with text files using:", { type, booksDir });
+    const foldersWithCompletion = await window.electron.ipcRenderer.invoke(
+      'getFoldersWithTxtFiles',
+      { type, booksDir }
+    );
+  
+    let metadataJson: any = {};
+    if (settings.isMetadataAvailable) {
+      metadataJson = await window.electron.ipcRenderer.invoke('loadMetadata', type);
+    }
+  
+    const booksWithMetadata = foldersWithCompletion.map(
+      (folderObj: { folder: string; completion: number }) => {
+        const metadata = metadataJson[folderObj.folder] || {};
+        return {
+          folder: folderObj.folder,
+          completion: folderObj.completion || 0,
+          metadata,
+        };
+      }
+    );
+  
+    console.log("BOOKS LOADED:", booksWithMetadata);
+  
+    setBooks(booksWithMetadata);
+    setFilteredBooks(booksWithMetadata);
+    updatePagination(booksWithMetadata.length, settings.poemsPerPage);
   };
 
   const updatePagination = (totalBooks: number, booksPerPage: string) => {

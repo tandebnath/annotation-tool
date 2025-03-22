@@ -19,7 +19,21 @@ class AppUpdater {
 let mainWindow: BrowserWindow | null = null;
 
 const userDataPath = app.getPath('userData');
+type AnnotationType = 'prose' | 'individualPoetry' | 'poetry';
 const settingsFilePath = path.join(userDataPath, 'settings.json');
+
+ipcMain.handle('settings:getAnnotationType', async () => {
+  if (fs.existsSync(settingsFilePath)) {
+    const allSettings = JSON.parse(fs.readFileSync(settingsFilePath, 'utf-8'));
+
+    const annotationType = allSettings.currentSession?.annotationType || 'prose'; // Ensure it's pulled from `currentSession`
+    console.log("MAIN PROCESS: Annotation Type Retrieved:", annotationType);
+    return annotationType; // Return the correct annotationType string
+  }
+
+  console.log("MAIN PROCESS: No annotation type found, returning default 'prose'.");
+  return 'prose'; // Default to prose if no settings exist
+});
 
 // IPC handler for opening a directory
 ipcMain.handle('dialog:openDirectory', async () => {
@@ -38,18 +52,62 @@ ipcMain.handle('dialog:openFile', async () => {
 });
 
 // IPC handler for saving settings
-ipcMain.handle('settings:save', async (_event, settings) => {
-  fs.writeFileSync(settingsFilePath, JSON.stringify(settings, null, 2));
-  return 'Settings saved successfully!';
+ipcMain.handle('settings:save', async (_event, { type, settings }) => {
+  let existingSettings: Record<string, any> = {};
+
+  if (fs.existsSync(settingsFilePath)) {
+    existingSettings = JSON.parse(fs.readFileSync(settingsFilePath, 'utf-8'));
+  }
+
+  if (type === 'currentSession') {
+    existingSettings.currentSession = settings;  // Store under currentSession
+  } else {
+    existingSettings[type] = settings;
+  }
+
+  fs.writeFileSync(settingsFilePath, JSON.stringify(existingSettings, null, 2));
+  return `Settings for ${type} saved successfully!`;
 });
 
 // IPC handler for loading settings
-ipcMain.handle('settings:load', async () => {
+ipcMain.handle('settings:load', async (_event, type) => {
   if (fs.existsSync(settingsFilePath)) {
-    const settings = JSON.parse(fs.readFileSync(settingsFilePath, 'utf-8'));
-    return settings;
-  } else {
-    return {};
+    const allSettings = JSON.parse(fs.readFileSync(settingsFilePath, 'utf-8'));
+    
+    if (type) {
+      return allSettings[type] || {};  // Return only requested type
+    }
+    return allSettings; // Return full settings if no type is specified
+  }
+  return {};
+});
+
+// IPC handler for resetting the current work session
+ipcMain.handle('settings:reset', async () => {
+  try {
+    // Check if settings file exists
+    if (!fs.existsSync(settingsFilePath)) return 'No session to reset.';
+
+    // Read current settings
+    const existingSettings = JSON.parse(
+      fs.readFileSync(settingsFilePath, 'utf-8'),
+    );
+
+    // Reset only the session-related data
+    existingSettings.currentSession = null; // Clear session tracking
+    existingSettings.prose = {}; // Clear prose settings
+    existingSettings.individualPoetry = {}; // Clear poetry (individual books) settings
+    existingSettings.poetry = {}; // Clear poetry collections settings
+
+    fs.writeFileSync(
+      settingsFilePath,
+      JSON.stringify(existingSettings, null, 2),
+    );
+
+    return 'Work session reset successfully!';
+  } catch (error) {
+    console.error('Error resetting session:', error);
+    throw error;
   }
 });
 
@@ -83,40 +141,58 @@ ipcMain.handle('getCsvColumns', async (_event, csvFilePath) => {
 });
 
 // IPC handler to get folders with .txt files and their completion percentages
-ipcMain.handle('getFoldersWithTxtFiles', async (_event, booksDir) => {
+ipcMain.handle('getFoldersWithTxtFiles', async (_event, { type, booksDir }) => {
+  console.log("MAIN PROCESS: booksDir received:", booksDir);
+
   if (!fs.existsSync(booksDir)) {
+    console.error("ERROR: booksDir does not exist!", booksDir);
     return [];
   }
 
-  const settingsPath = path.join(app.getPath('userData'), 'settings.json');
-  const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-  const annotationsCsvPath = settings.annotationsCsv;
+  let settings: Record<string, any> = {}; // Use a generic object type
+
+  try {
+    settings = JSON.parse(fs.readFileSync(settingsFilePath, 'utf-8'));
+  } catch (error) {
+    console.error("ERROR: Failed to read settings file:", error);
+    return [];
+  }
+
+  const annotationType = settings.currentSession?.annotationType || type || 'prose';
+  const annotationsCsvPath = settings[annotationType]?.annotationsCsv;
+
+  if (!annotationsCsvPath || !fs.existsSync(annotationsCsvPath)) {
+    console.warn("WARNING: No valid annotation file found for", annotationType);
+    return [];
+  }
 
   const directories = fs
     .readdirSync(booksDir, { withFileTypes: true })
     .filter((dirent) => dirent.isDirectory())
     .map((dirent) => path.join(booksDir, dirent.name));
 
+  console.log(`MAIN: Found subdirectories in ${booksDir}:`, directories);
+
   const foldersWithCompletion = directories.map((dir) => {
     const folderName = path.basename(dir);
-    const txtFiles = fs
-      .readdirSync(dir)
-      .filter((file) => file.endsWith('.txt'));
+    const txtFiles = fs.readdirSync(dir).filter((file) => file.endsWith('.txt'));
+
+    console.log(`MAIN: Inside ${dir}, found txt files:`, txtFiles);
 
     let annotatedPages = 0;
 
     if (fs.existsSync(annotationsCsvPath)) {
-      const annotations = fs
-        .readFileSync(annotationsCsvPath, 'utf-8')
+      const annotations = fs.readFileSync(annotationsCsvPath, 'utf-8')
         .split('\n')
-        .filter((line) => line.trim() !== '');
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
 
       const annotationSet = new Set();
 
       annotations.forEach((line) => {
-        const [id, page] = line.split(',');
-        if (id === folderName && txtFiles.includes(page.trim())) {
-          annotationSet.add(page.trim());
+        const [id, page] = line.split(',').map(s => s.trim());
+        if (id === folderName && txtFiles.includes(page)) {
+          annotationSet.add(page);
         }
       });
 
@@ -129,6 +205,8 @@ ipcMain.handle('getFoldersWithTxtFiles', async (_event, booksDir) => {
 
     return { folder: folderName, completion };
   });
+
+  console.log("MAIN: Returning folders with completion data:", foldersWithCompletion);
 
   return foldersWithCompletion;
 });
@@ -164,36 +242,42 @@ ipcMain.handle('loadMetadata', async () => {
 
 // IPC handler to get the contents of .txt files within a folder aka book pages
 ipcMain.handle('getBookContents', async (_event, bookId) => {
-  const settingsPath = path.join(app.getPath('userData'), 'settings.json');
-  const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-
-  const booksDir = settings.booksDir;
-  const bookFolderPath = path.join(booksDir, bookId);
-
-  if (!fs.existsSync(bookFolderPath)) {
+  if (!fs.existsSync(settingsFilePath)) {
+    console.error("ERROR: Settings file not found.");
     return [];
   }
 
-  const files = fs
-    .readdirSync(bookFolderPath)
-    .filter((file) => file.endsWith('.txt'));
+  const settings = JSON.parse(fs.readFileSync(settingsFilePath, 'utf-8'));
+  const annotationType = settings.currentSession?.annotationType || 'prose'; // Use currentSession.annotationType
 
+  const booksDir = settings[annotationType]?.collectionsDir; // Use the correct booksDir for prose/poetry
+  if (!booksDir) {
+    console.error(`ERROR: collectionsDir not found for ${annotationType}`);
+    return [];
+  }
+
+  const bookFolderPath = path.join(booksDir, bookId);
+  if (!fs.existsSync(bookFolderPath)) {
+    console.error(`ERROR: Book folder does not exist: ${bookFolderPath}`);
+    return [];
+  }
+
+  const files = fs.readdirSync(bookFolderPath).filter((file) => file.endsWith('.txt'));
   const pages = files.map((file) => {
     const content = fs.readFileSync(path.join(bookFolderPath, file), 'utf-8');
-    return {
-      fileName: file, // The .txt file name (e.g., "001.txt")
-      content: content, // The content of the .txt file
-    };
+    return { fileName: file, content };
   });
 
+  console.log(`MAIN: Loaded ${pages.length} pages for book: ${bookId}`);
   return pages;
 });
 
+// IPC handler to save annotation, ensuring it's stored in the correct annotation type
 ipcMain.handle('saveAnnotation', async (_event, { bookId, page, state }) => {
-  const settingsPath = path.join(app.getPath('userData'), 'settings.json');
-  const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+  const settings = JSON.parse(fs.readFileSync(settingsFilePath, 'utf-8'));
+  const annotationType = settings.currentSession?.annotationType || 'prose'; // Default to prose if no session
+  const annotationsCsvPath = settings[annotationType]?.annotationsCsv;
 
-  const annotationsCsvPath = settings.annotationsCsv;
   if (!annotationsCsvPath) {
     throw new Error('Annotations CSV path is not set.');
   }
@@ -224,7 +308,7 @@ ipcMain.handle('saveAnnotation', async (_event, { bookId, page, state }) => {
     annotations.push({ csvBookId: bookId, csvPage: page, csvState: state });
   }
 
-  // Write back to the CSV
+  // Write back to the correct CSV
   fs.writeFileSync(
     annotationsCsvPath,
     annotations
@@ -238,21 +322,27 @@ ipcMain.handle('saveAnnotation', async (_event, { bookId, page, state }) => {
   return 'Annotation saved successfully!';
 });
 
-ipcMain.handle('loadAnnotations', async (_event, bookId) => {
-  const settingsPath = path.join(app.getPath('userData'), 'settings.json');
-  const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-
-  const annotationsCsvPath = settings.annotationsCsv;
-  if (!annotationsCsvPath) {
-    throw new Error('Annotations CSV path is not set.');
-  }
-
-  if (!fs.existsSync(annotationsCsvPath)) {
+ipcMain.handle('loadAnnotations', async (_event, { bookId }) => {
+  if (!fs.existsSync(settingsFilePath)) {
+    console.error("ERROR: Settings file not found.");
     return [];
   }
 
-  const annotations = fs
-    .readFileSync(annotationsCsvPath, 'utf-8')
+  const settings = JSON.parse(fs.readFileSync(settingsFilePath, 'utf-8'));
+  const annotationType = settings.currentSession?.annotationType || 'prose'; // Ensure we get the correct type
+
+  const annotationsCsvPath = settings[annotationType]?.annotationsCsv;
+  if (!annotationsCsvPath) {
+    console.error(`ERROR: Annotations CSV path is not set for ${annotationType}`);
+    return [];
+  }
+
+  if (!fs.existsSync(annotationsCsvPath)) {
+    console.warn(`WARNING: Annotations CSV file does not exist: ${annotationsCsvPath}`);
+    return [];
+  }
+
+  const annotations = fs.readFileSync(annotationsCsvPath, 'utf-8')
     .split('\n')
     .filter((line) => line.trim() !== '')
     .map((line) => {
@@ -270,21 +360,27 @@ ipcMain.handle('loadAnnotations', async (_event, bookId) => {
 */
 
 // IPC handler to load volume notes
-ipcMain.handle('loadVolumeNotes', async (_event, bookId) => {
-  const settingsPath = path.join(app.getPath('userData'), 'settings.json');
-  const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-
-  const volumeNotesCsvPath = settings.volumeNotesCsv;
-  if (!volumeNotesCsvPath) {
-    throw new Error('Volume notes CSV path is not set.');
-  }
-
-  if (!fs.existsSync(volumeNotesCsvPath)) {
+ipcMain.handle('loadVolumeNotes', async (_event, { bookId }) => {
+  if (!fs.existsSync(settingsFilePath)) {
+    console.error("ERROR: Settings file not found.");
     return '';
   }
 
-  const notes = fs
-    .readFileSync(volumeNotesCsvPath, 'utf-8')
+  const settings = JSON.parse(fs.readFileSync(settingsFilePath, 'utf-8'));
+  const annotationType = settings.currentSession?.annotationType || 'prose'; // Use correct annotation type
+
+  const volumeNotesCsvPath = settings[annotationType]?.volumeNotesCsv;
+  if (!volumeNotesCsvPath) {
+    console.error(`ERROR: Volume notes CSV path is not set for ${annotationType}`);
+    return '';
+  }
+
+  if (!fs.existsSync(volumeNotesCsvPath)) {
+    console.warn(`WARNING: Volume notes CSV file does not exist: ${volumeNotesCsvPath}`);
+    return '';
+  }
+
+  const notes = fs.readFileSync(volumeNotesCsvPath, 'utf-8')
     .split('\n')
     .filter((line) => line.trim() !== '')
     .map((line) => {
@@ -298,53 +394,65 @@ ipcMain.handle('loadVolumeNotes', async (_event, bookId) => {
 
 // IPC handler to save volume notes
 ipcMain.handle('saveVolumeNotes', async (_event, { bookId, note }) => {
-  const settingsPath = path.join(app.getPath('userData'), 'settings.json');
-  const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-
-  const volumeNotesCsvPath = settings.volumeNotesCsv;
-  if (!volumeNotesCsvPath) {
-    throw new Error('Volume notes CSV path is not set.');
+  if (!fs.existsSync(settingsFilePath)) {
+    console.error("ERROR: Settings file not found.");
+    return `Error: Settings file not found.`;
   }
 
-  let notes: any = [];
+  const settings = JSON.parse(fs.readFileSync(settingsFilePath, 'utf-8'));
+  const annotationType = settings.currentSession?.annotationType || 'prose'; // Correctly retrieve annotation type
+
+  const volumeNotesCsvPath = settings[annotationType]?.volumeNotesCsv;
+  if (!volumeNotesCsvPath) {
+    console.error(`ERROR: Volume notes CSV path is not set for ${annotationType}`);
+    return `Error: Volume notes CSV path is not set for ${annotationType}`;
+  }
+
+  let notes: string[] = [];
   if (fs.existsSync(volumeNotesCsvPath)) {
-    notes = fs
-      .readFileSync(volumeNotesCsvPath, 'utf-8')
+    notes = fs.readFileSync(volumeNotesCsvPath, 'utf-8')
       .split('\n')
       .filter((line) => line.trim() !== '');
   }
 
-  const updatedNotes = notes.filter((line: any) => !line.startsWith(bookId));
+  // Remove old note if it exists
+  const updatedNotes = notes.filter((line) => !line.startsWith(bookId));
   if (note.trim()) {
     updatedNotes.push(`${bookId},${note}`);
   }
 
   fs.writeFileSync(volumeNotesCsvPath, updatedNotes.join('\n'));
-  return 'Volume note saved successfully!';
+  return `Volume note saved successfully for ${annotationType}!`;
 });
 
 // IPC handler to clear volume notes
-ipcMain.handle('clearVolumeNotes', async (_event, bookId) => {
+ipcMain.handle('clearVolumeNotes', async (_event, { bookId }) => {
   const settingsPath = path.join(app.getPath('userData'), 'settings.json');
-  const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
 
-  const volumeNotesCsvPath = settings.volumeNotesCsv;
+  if (!fs.existsSync(settingsPath)) {
+    throw new Error('Settings file does not exist.');
+  }
+
+  const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+  const annotationType = settings.currentSession?.annotationType || 'prose'; // ✅ Get current annotation type
+  const volumeNotesCsvPath = settings[annotationType]?.volumeNotesCsv; // ✅ Use correct annotation type
+
   if (!volumeNotesCsvPath) {
-    throw new Error('Volume notes CSV path is not set.');
+    throw new Error(`Volume notes CSV path is not set for ${annotationType}.`);
   }
 
   if (!fs.existsSync(volumeNotesCsvPath)) {
-    return 'No volume notes found to clear.';
+    return `No volume notes found to clear for ${annotationType}.`;
   }
 
   const notes = fs
     .readFileSync(volumeNotesCsvPath, 'utf-8')
     .split('\n')
-    .filter((line) => line.trim() !== '')
-    .filter((line) => !line.startsWith(bookId));
+    .filter((line) => line.trim() !== '' && !line.startsWith(bookId));
 
   fs.writeFileSync(volumeNotesCsvPath, notes.join('\n'));
-  return 'Volume note cleared successfully!';
+
+  return `Volume note cleared successfully for ${annotationType}!`;
 });
 
 if (process.env.NODE_ENV === 'production') {

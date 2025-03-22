@@ -17,10 +17,10 @@ import {
   IconButton,
   Checkbox,
 } from '@mui/material';
-import { CloseOutlined } from '@mui/icons-material';
+import { CloseOutlined, ArrowBack } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
-const Settings: React.FC = () => {
+const ProseSettings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [booksDir, setBooksDir] = useState('');
   const [annotationsCsv, setAnnotationsCsv] = useState('');
   const [volumeNotesCsv, setVolumeNotesCsv] = useState('');
@@ -42,7 +42,7 @@ const Settings: React.FC = () => {
 
   useEffect(() => {
     window.electron.ipcRenderer
-      .invoke('settings:load')
+      .invoke('settings:load', 'prose')
       .then(async (settings) => {
         if (settings) {
           setBooksDir(settings.booksDir || '');
@@ -99,10 +99,12 @@ const Settings: React.FC = () => {
         metadataFields,
       };
 
-      window.electron.ipcRenderer.invoke('settings:save', settings).then(() => {
-        alert('Settings saved successfully!');
-        navigate('/'); // Redirect to the book list page
-      });
+      window.electron.ipcRenderer
+        .invoke('settings:save', { type: 'prose', settings })
+        .then(() => {
+          alert('Settings saved successfully!');
+          navigate('/'); // Redirect to the book list page
+        });
     } else {
       alert('Please fill all fields!');
     }
@@ -255,6 +257,13 @@ const Settings: React.FC = () => {
       >
         Settings
       </Typography> */}
+      <Button
+        startIcon={<ArrowBack />}
+        onClick={onBack} // Call the back function from props
+        sx={{ marginBottom: 2, fontWeight: 'bold' }}
+      >
+        Back
+      </Button>
       <Divider sx={{ marginBottom: '2rem' }} />
       <Box
         mb={4}
@@ -633,4 +642,4 @@ const Settings: React.FC = () => {
   );
 };
 
-export default Settings;
+export default ProseSettings;

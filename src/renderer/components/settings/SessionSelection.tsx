@@ -1,52 +1,92 @@
 import React from 'react';
-import { Box, Button, Divider, Typography } from '@mui/material';
+import { Box, Button, Divider } from '@mui/material';
+import SettingsIcon from '@mui/icons-material/Settings';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import { useNavigate } from 'react-router-dom';
 
-const SessionSelection: React.FC<{ onNewSession: () => void; onContinue: () => void; sessionExists: boolean }> = ({
-  onNewSession,
-  onContinue,
-  sessionExists,
-}) => {
-  console.log("DEBUG: sessionExists in SessionSelection:", sessionExists); // 🔍 Log sessionExists
+import BackButton from '../BackButton/BackButton';
+import { useSession } from '../../context/SessionContext';
+
+const SessionSelection: React.FC = () => {
+  const navigate = useNavigate();
+  const { sessionExists, resetSession } = useSession();
 
   return (
-    <Box sx={{ textAlign: 'center', padding: '2rem' }}>
-      <Typography variant="h5" sx={{ fontWeight: 'bold', marginBottom: 2 }}>
-        Select Work Session
-      </Typography>
+    <Box sx={{ width: '100%', padding: '2rem 2rem 4rem 2rem' }}>
+      {sessionExists && (
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 3 }}>
+          <BackButton label="Back to Home" navigateTo="/books" />
+        </Box>
+      )}
 
-      {/* Continue Current Session */}
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={onContinue}
-        disabled={!sessionExists} // Should only be disabled if false
-        fullWidth
+      <Box
         sx={{
-          padding: '1rem',
-          fontSize: '1rem',
-          fontWeight: 'bold',
-          opacity: sessionExists ? 1 : 0.5,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          maxWidth: '28rem',
+          margin: '0 auto',
+          gap: '2rem',
         }}
       >
-        Continue Current Work Session
-      </Button>
+        {sessionExists && (
+          <>
+            <Button
+              variant="contained"
+              startIcon={<SettingsIcon />}
+              onClick={() =>
+                navigate('/settings/annotation-settings', {
+                  state: { from: 'session-selection' },
+                })
+              }
+              fullWidth
+              sx={{
+                padding: '0.85rem',
+                fontSize: '1rem',
+                fontWeight: 600,
+                backgroundColor: 'var(--primary-color)',
+                color: 'var(--text-color)',
+                textTransform: 'none',
+                '&:hover': {
+                  backgroundColor: 'var(--primary-hover)',
+                },
+                '&:active': {
+                  backgroundColor: 'var(--primary-active)',
+                },
+              }}
+            >
+              Modify Current Session Settings
+            </Button>
+            <Divider sx={{ width: '100%', mx: 'auto', my: 1}} />
+          </>
+        )}
 
-      <Divider sx={{ marginY: '2rem' }} />
-
-      {/* Start New Session */}
-      <Button
-        variant="contained"
-        color="secondary"
-        onClick={onNewSession}
-        fullWidth
-        sx={{
-          padding: '1rem',
-          fontSize: '1rem',
-          fontWeight: 'bold',
-        }}
-      >
-        Start New Work Session
-      </Button>
+        <Button
+          variant="contained"
+          startIcon={<AddCircleOutlineIcon />}
+          onClick={() => {
+            resetSession();
+            navigate('/settings/select-type');
+          }}
+          fullWidth
+          sx={{
+            padding: '0.85rem',
+            fontSize: '1rem',
+            fontWeight: 600,
+            backgroundColor: 'var(--primary-color)',
+            color: 'var(--text-color)',
+            textTransform: 'none',
+            '&:hover': {
+              backgroundColor: 'var(--primary-hover)',
+            },
+            '&:active': {
+              backgroundColor: 'var(--primary-active)',
+            },
+          }}
+        >
+          Start New Work Session
+        </Button>
+      </Box>
     </Box>
   );
 };

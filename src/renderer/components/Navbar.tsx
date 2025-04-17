@@ -7,22 +7,45 @@ import {
   Typography,
   IconButton,
 } from '@mui/material';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, matchPath } from 'react-router-dom';
 import { Settings as SettingsIcon } from '@mui/icons-material';
 import logo from '../../../assets/logo.png';
+import illinoisLogo from '../../../assets/illinois_logo.png';
 
-const Navbar: React.FC = () => {
+import { useSession } from '../context/SessionContext';
+
+interface NavbarProps {
+  onSearchChange?: (query: string) => void;
+  customComponent?: React.ReactNode;
+}
+
+const Navbar: React.FC<NavbarProps> = ({ onSearchChange, customComponent }) => {
   const navigate = useNavigate();
   const location = useLocation();
+
+  const { annotationType } = useSession();
 
   // Determine the title based on the current route
   let title = '';
   if (location.pathname === '/') {
-    title = 'List of Books';
-  } else if (location.pathname.startsWith('/book')) {
-    title = 'Book Details';
+    title = 'Annotation Library';
   } else if (location.pathname === '/settings') {
-    title = 'Settings';
+    title = 'Session Selection';
+  } else if (location.pathname === '/settings/select-type') {
+    title = 'Annotation Type Selection';
+  } else if (location.pathname === '/settings/annotation-settings') {
+    title =
+      annotationType === 'prose'
+        ? 'Prose Annotation Settings'
+        : annotationType === 'poetry'
+          ? 'Poetry Annotation Settings'
+          : 'Annotation Settings';
+  } else if (matchPath('/book/:bookId', location.pathname)) {
+    title = 'Volume Details';
+  } else if (location.pathname === '/book') {
+    title = 'Annotation Library';
+  } else {
+    title = 'Annotation Library'
   }
 
   // Hide the navbar on the /settings route
@@ -34,10 +57,10 @@ const Navbar: React.FC = () => {
     <AppBar
       position="sticky"
       sx={{
-        backgroundColor: '#13294B',
+        backgroundColor: '#2F2323', // '#13294B'
         boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
         zIndex: 1000, // Ensure navbar stays on top
-        padding: '0 2rem',
+        padding: '0.5rem 2.5rem',
       }}
     >
       <Toolbar
@@ -48,52 +71,56 @@ const Navbar: React.FC = () => {
       >
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <img
-            src={logo}
+            src={illinoisLogo}
             alt="App Logo"
-            style={{ width: '7rem', height: '4.5rem' }}
+            style={{ width: '1.5rem', height: '2.5rem' }}
           />
         </Box>
+
         <Box sx={{ flexGrow: 1 }}>
-          <Typography
-            variant="h5"
-            // sx={{
-            //   fontFamily: 'PlayfairDisplay',
-            //   color: '#fff',
-            //   textAlign: 'center',
-            //   flexGrow: 1,
-            //   fontWeight: 600,
-            //   textTransform: 'uppercase',
-            // }}
-            sx={{
-              fontFamily: 'PlayfairDisplay',
-              color: '#ffffff',
-              textAlign: 'center',
-              flexGrow: 1,
-              letterSpacing: '0.05em',
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              textShadow: `
-                -1px -1px 1px rgba(0, 0, 0, 0.6)
+          {!customComponent && (
+            <Typography
+              variant="h4"
+              sx={{
+                color: '#EFEFE8', // Off-white text color
+                textAlign: 'center',
+                flexGrow: 1,
+                letterSpacing: '0.075em',
+                fontWeight: 600,
+                cursor: 'default',
+                textShadow: `
+                1px 1px 0 rgba(0, 0, 0, 0.4),
+                -1px -1px 0 rgba(255, 255, 255, 0.15)
               `,
-            }}
-          >
-            {title}
-          </Typography>
+                // Slight stroke to add to the carved effect.
+                WebkitTextStroke: '0.5px rgba(0, 0, 0, 0.2)',
+              }}
+            >
+              {title}
+            </Typography>
+          )}
+          {customComponent}
         </Box>
-        {location.pathname !== '/settings' && (
+        {location.pathname === '/books' && (
           <Box>
             <IconButton
-              // sx={{
-              //   backgroundColor: '#d3d3d3',
-              //   color: 'black',
-              //   '&:hover': {
-              //     backgroundColor: '#bcbcbc',
-              //   },
-              // }}
-              sx={{ color: '#fff' }}
+              sx={{
+                textShadow: `
+      1px 1px 0 rgba(0, 0, 0, 0.4),
+      -1px -1px 0 rgba(255, 255, 255, 0.15)
+    `,
+                color: '#EFEFE8',
+                transition: 'transform 0.2s ease-in-out',
+                '&:hover': {
+                  transform: 'scale(1.1)',
+                },
+                '&:active': {
+                  transform: 'scale(0.98)',
+                },
+              }}
               onClick={() => navigate('/settings')}
             >
-              <SettingsIcon />
+              <SettingsIcon sx={{ fontSize: '2rem' }} />
             </IconButton>
           </Box>
         )}

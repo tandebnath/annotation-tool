@@ -1,40 +1,36 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Box, Button, Typography } from '@mui/material';
-import { ArrowBack } from '@mui/icons-material';
+import BackButton from '../BackButton/BackButton';
+import { useNavigate } from 'react-router-dom';
+import { useSession } from '../../context/SessionContext';
 
-interface AnnotationTypeSelectionProps {
-  onSelect: (type: 'prose' | 'poetry') => void;
-  selectedType: 'prose' | 'poetry' | '';
-  onBack: () => void;
-}
+const AnnotationTypeSelection: React.FC = () => {
+  const [selected, setSelected] = useState<'prose' | 'poetry' | ''>('');
+  const navigate = useNavigate();
 
-const AnnotationTypeSelection: React.FC<AnnotationTypeSelectionProps> = ({
-  onSelect,
-  selectedType,
-  onBack,
-}) => {
-  const [selected, setSelected] = useState<'prose' | 'poetry' | ''>(
-    selectedType || '',
-  );
-
-  useEffect(() => {
-    if (selectedType) setSelected(selectedType);
-  }, [selectedType]);
+  const { setAnnotationType } = useSession();
 
   const handleSelection = (type: 'prose' | 'poetry') => {
     setSelected(type);
   };
 
+  const handleProceed = async () => {
+    if (!selected) return;
+
+    // Persist only the annotation type as a starter
+    await window.electron.ipcRenderer.invoke('settings:save', {
+      type: selected,
+      settings: {}, // Start with an empty object
+    });
+
+    setAnnotationType(selected);
+    navigate('/settings/annotation-settings');
+  };
+
   return (
     <Box sx={{ textAlign: 'center', padding: '2rem' }}>
       <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
-        <Button
-          startIcon={<ArrowBack />}
-          onClick={onBack}
-          sx={{ marginBottom: 2, fontWeight: 'bold' }}
-        >
-          Back
-        </Button>
+        <BackButton navigateTo="/settings" />
       </Box>
 
       <Typography variant="h5" sx={{ fontWeight: 'bold', marginBottom: 3 }}>
@@ -51,37 +47,60 @@ const AnnotationTypeSelection: React.FC<AnnotationTypeSelectionProps> = ({
       >
         <Button
           variant={selected === 'prose' ? 'contained' : 'outlined'}
-          color="secondary"
           onClick={() => handleSelection('prose')}
+          sx={{
+            fontWeight: 'bold',
+            textTransform: 'none',
+            backgroundColor:
+              selected === 'prose' ? 'var(--primary-color)' : 'transparent',
+            color: selected === 'prose' ? 'var(--text-color)' : 'inherit',
+            '&:hover': {
+              backgroundColor:
+                selected === 'prose'
+                  ? 'var(--primary-hover)'
+                  : 'var(--primary-color)',
+              color: 'var(--text-color)',
+            },
+          }}
         >
           Prose
         </Button>
         <Button
           variant={selected === 'poetry' ? 'contained' : 'outlined'}
-          color="secondary"
           onClick={() => handleSelection('poetry')}
+          sx={{
+            fontWeight: 'bold',
+            textTransform: 'none',
+            backgroundColor:
+              selected === 'poetry' ? 'var(--primary-color)' : 'transparent',
+            color: selected === 'poetry' ? 'var(--text-color)' : 'inherit',
+            '&:hover': {
+              backgroundColor:
+                selected === 'poetry'
+                  ? 'var(--primary-hover)'
+                  : 'var(--primary-color)',
+              color: 'var(--text-color)',
+            },
+          }}
         >
           Poetry
         </Button>
       </Box>
 
-      {/* Proceed Button with Fixed Width */}
       <Button
         variant="contained"
-        color="success"
         disabled={!selected}
-        onClick={async () => {
-          if (selected) {
-            // Save annotation type to settings.json
-            await window.electron.ipcRenderer.invoke('settings:save', {
-              type: 'annotationType',
-              settings: { annotationType: selected },
-            });
-
-            onSelect(selected); // Trigger transition after clicking Proceed
-          }
+        onClick={handleProceed}
+        sx={{
+          width: '10rem',
+          fontWeight: 'bold',
+          backgroundColor: 'var(--proceed-color)',
+          color: 'var(--text-color)',
+          textTransform: 'none',
+          '&:hover': {
+            backgroundColor: 'var(--proceed-hover)',
+          },
         }}
-        sx={{ width: '10rem', fontWeight: 'bold' }}
       >
         Proceed
       </Button>

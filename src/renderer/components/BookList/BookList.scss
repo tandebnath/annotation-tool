@@ -1,0 +1,74 @@
+.cabinet {
+    position: relative;
+    width: 100%;
+    background-color: #45221c;
+    border: 10px solid #69342b;
+    box-sizing: border-box;
+    padding: 2rem;
+    margin-top: 2rem;
+  }
+  
+  .cabinet-top {
+    position: absolute;
+    top: -20px;
+    left: -2%;
+    width: 104%;
+    height: 0;
+    border-bottom: 10px solid #572b23;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    box-sizing: border-box;
+  }
+  
+  .cabinet-back {
+    position: absolute;
+    top: 0;
+    left: 2.25%;
+    width: 95.5%;
+    bottom: 0;
+    background: #2c1512;
+    box-shadow: inset 10px 15px 15px #21100d;
+    z-index: 0;
+  }
+  
+  .shelf {
+    position: relative;
+    width: 100%;
+    height: 160px;
+    margin-bottom: 30px;
+  }
+  
+  .shelf .base {
+    position: absolute;
+    bottom: 10px;
+    width: 100%;
+    height: 0;
+    border-bottom: 20px solid #331915;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    box-sizing: border-box;
+    z-index: 1;
+  }
+  
+  .shelf .front {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 10px;
+    background-color: #69342b;
+    z-index: 2;
+  }
+  
+  .book-box {
+    position: absolute;
+    width: 10rem;
+    height: 12.5rem;
+    bottom: 10px;
+    perspective: 25rem;
+    cursor: pointer;
+    z-index: 3;
+  }
+  
+  .book-box:nth-child(3) { left: 10%; }
+  .book-box:nth-child(4) { left: 40%; }
+  .book-box:nth-child(5) { left: 70%; }

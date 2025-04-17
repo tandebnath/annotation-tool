@@ -12,9 +12,10 @@ export type Channels =
   | 'getBookContents'
   | 'saveAnnotation'
   | 'loadAnnotations'
-  | 'saveVolumeNotes'
-  | 'loadVolumeNotes'
-  | 'clearVolumeNotes'
+  | 'annotations:getUsedLabels'
+  | 'saveNotes'
+  | 'loadNotes'
+  | 'clearNotes'
   | 'getCsvColumns'
   | 'loadMetadata';
 

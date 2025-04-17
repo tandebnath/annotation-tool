@@ -1,0 +1,73 @@
+.cabinet {
+  position: relative;
+  width: 100%;
+  background-color: #45221c;
+  border: 0.625rem solid #69342b;
+  box-sizing: border-box;
+  margin: 4% auto; // centers it
+}
+
+.cabinet-top {
+  position: absolute;
+  top: -1.25rem;
+  left: -0.85%;
+  width: 101.75%;
+  height: 0;
+  border-bottom: 0.625rem solid #572b23;
+  border-left: 0.625rem solid transparent;
+  border-right: 0.625rem solid transparent;
+  box-sizing: border-box;
+}
+
+.cabinet-back {
+  position: absolute;
+  top: 0;
+  left: 2.25%;
+  width: 95.5%;
+  bottom: 0;
+  background: #2c1512;
+  box-shadow: inset 0.625rem 0.9375rem 0.9375rem #21100d;
+}
+
+.shelf {
+  position: relative;
+  width: 100%;
+  height: 15rem; // enough to fit 12.5rem books
+  box-sizing: border-box;
+  margin-top: 1.875rem; // spacing between shelves
+}
+
+.base {
+  position: absolute;
+  bottom: 0.625rem;
+  width: 100%;
+  height: 0;
+  border-bottom: 1.25rem solid #331915;
+  border-left: 1.5rem solid transparent;
+  border-right: 1.5rem solid transparent;
+  box-sizing: border-box;
+}
+
+.front {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 0.625rem;
+  background-color: #69342b;
+}
+
+.bookContainer {
+  position: absolute;
+  bottom: 1.25rem; // Raise the books above the shelf base
+  left: 1rem; // Some left padding
+  right: 1rem; // Some right padding
+  display: flex;
+  justify-content: center;
+  align-items: flex-end; // line up the bottom edges
+}
+
+.book {
+  position: relative;
+  width: 10rem;
+  height: 12.5rem;
+}

@@ -3,6 +3,8 @@ import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 export type Channels =
   | 'settings:load'
   | 'settings:save'
+  | 'settings:reset'
+  | 'settings:getAnnotationType'
   | 'dialog:openDirectory'
   | 'dialog:openFile'
   | 'getBookPageCount'
@@ -10,9 +12,10 @@ export type Channels =
   | 'getBookContents'
   | 'saveAnnotation'
   | 'loadAnnotations'
-  | 'saveVolumeNotes'
-  | 'loadVolumeNotes'
-  | 'clearVolumeNotes'
+  | 'annotations:getUsedLabels'
+  | 'saveNotes'
+  | 'loadNotes'
+  | 'clearNotes'
   | 'getCsvColumns'
   | 'loadMetadata';
 

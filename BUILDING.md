@@ -75,6 +75,7 @@ docker pull electronuserland/builder
 
 ```bash
 docker run --rm \
+  --platform linux/amd64 \
   -e ELECTRON_CACHE="/root/.cache/electron" \
   -e ELECTRON_BUILDER_CACHE="/root/.cache/electron-builder" \
   -v "$(pwd)":/project \

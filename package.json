@@ -1,5 +1,5 @@
 {
-  "description": "Annotation Tool developed for ARI",
+  "description": "Annotation Tool",
   "keywords": [
     "electron",
     "annotation",
@@ -9,13 +9,13 @@
     "ari",
     "uiuc"
   ],
-  "homepage": "https://tanmoydebnath.com",
+  "homepage": "https://github.com/tandebnath/annotation-tool",
   "bugs": {
-    "url": "https://tanmoydebnath.com"
+    "url": "https://github.com/tandebnath/annotation-tool"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/electron-react-boilerplate/electron-react-boilerplate.git"
+    "url": "git+https://github.com/tandebnath/annotation-tool.git"
   },
   "license": "MIT",
   "author": {
@@ -27,7 +27,7 @@
     {
       "name": "Tan Debnath",
       "email": "tand3@illinois.edu",
-      "url": "https://tanmoydebnath.com"
+      "url": "https://github.com/tandebnath/annotation-tool"
     }
   ],
   "main": "./src/main/main.ts",
@@ -176,6 +176,7 @@
   "build": {
     "productName": "AnnotationTool",
     "appId": "edu.illinois.appliedresearch.annotationtool/",
+    "artifactName": "AnnotationTool.${ext}",
     "asar": true,
     "asarUnpack": "**\\*.{node,dll}",
     "files": [
@@ -184,6 +185,7 @@
       "package.json"
     ],
     "mac": {
+      "icon": "assets/icon.icns",
       "sign": ".erb/scripts/notarize.js",
       "notarize": false,
       "target": {
@@ -220,8 +222,10 @@
       ]
     },
     "linux": {
+      "icon": "assets/icon.png",
       "target": [
-        "AppImage", "deb"
+        "AppImage",
+        "deb"
       ],
       "category": "Development"
     },
@@ -235,12 +239,9 @@
     ],
     "publish": {
       "provider": "github",
-      "owner": "electron-react-boilerplate",
-      "repo": "electron-react-boilerplate"
+      "owner": "tandebnath",
+      "repo": "annotation-tool"
     }
-  },
-  "collective": {
-    "url": "https://opencollective.com/electron-react-boilerplate-594"
   },
   "engines": {
     "node": ">=14.x",

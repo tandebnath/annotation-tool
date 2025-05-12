@@ -518,7 +518,10 @@ const BookDetails: React.FC = () => {
     else if (key === 'label') setRangeState(value);
   };
 
-  const visiblePages = paginatePages(currentPage);
+const visiblePages =
+  annotationType === 'poetry'
+    ? [{ fileName: 'poetry', content: pages.map((p) => p.content).join('\n\n') }]
+    : paginatePages(currentPage);
 
   const tempLabels: Record<string, string[]> = {};
 

@@ -7,7 +7,7 @@ pids
 *.pid
 *.seed
 
-# Coverage directory used by tools like istanbul
+# Coverage directory
 coverage
 .eslintcache
 
@@ -19,6 +19,7 @@ node_modules
 .DS_Store
 
 release/app/dist
+dist
 release/build
 .erb/dll
 

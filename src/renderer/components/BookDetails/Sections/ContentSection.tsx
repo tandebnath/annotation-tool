@@ -25,7 +25,11 @@ interface ContentSectionProps {
   visiblePages: Page[];
   states: string[];
   annotations: { page: string; state: string; category: string }[];
-  onAnnotationClick: (page: string, state: string, category: string) => Promise<void>;
+  onAnnotationClick: (
+    page: string,
+    state: string,
+    category: string,
+  ) => Promise<void>;
   labelCategories: LabelCategory[];
   setSelectedCategory: (category: string) => void;
   bookId: string;
@@ -59,7 +63,7 @@ const ContentSection: React.FC<ContentSectionProps> = ({
   persistLabel,
   onPersistChange,
   onAddLabel,
-  temporaryLabels
+  temporaryLabels,
 }) => {
   if (annotationType === 'poetry') {
     return (
@@ -111,84 +115,55 @@ const ContentSection: React.FC<ContentSectionProps> = ({
 
   return (
     <>
-      {visiblePages.map((page, index) => (
-        <React.Fragment key={index}>
-          <Card sx={{ marginBottom: '2rem' }}>
-            <CardContent>
-              <Typography
-                variant="h6"
-                sx={{ color: 'var(--text-color)', fontWeight: 'bold' }}
-              >
-                Page {parseInt(page.fileName.replace('.txt', ''), 10)}
-              </Typography>
-              <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
-                {page.content}
-              </pre>
-            </CardContent>
+      {visiblePages.map((page, index) => {
+        const pageAnnotations = annotations
+          .filter((a) => a.page === page.fileName)
+          .map((a) => ({ ...a, bookId }));
 
-            <CardActions sx={{ flexWrap: 'wrap', paddingLeft: '1rem' }}>
-              {states.map((state, idx) => (
-                <Button
-                  key={idx}
-                  variant="contained"
-                  onClick={() =>
-                    onAnnotationClick(page.fileName, state, selectedCategory)
-                  }
-                  sx={{
-                    backgroundColor: isStateActive(
-                      page.fileName,
-                      state,
-                      selectedCategory,
-                    )
-                      ? 'var(--proceed-color)'
-                      : 'var(--primary-color)',
-                    color: 'black',
-                    marginRight: '0.5rem',
-                    fontWeight: 'bold',
-                    marginBottom: '0.5rem',
-                    '&:hover': {
-                      backgroundColor: isStateActive(
-                        page.fileName,
-                        state,
-                        selectedCategory,
-                      )
-                        ? 'var(--proceed-hover)'
-                        : 'var(--primary-hover)',
-                    },
-                  }}
+        return (
+          <React.Fragment key={index}>
+            <Card sx={{ marginBottom: '2rem' }}>
+              <CardContent>
+                <Typography
+                  variant="h6"
+                  sx={{ color: 'var(--text-color)', fontWeight: 'bold' }}
                 >
-                  {state}
-                </Button>
-              ))}
-            </CardActions>
+                  Page {parseInt(page.fileName.replace('.txt', ''), 10)}
+                </Typography>
+                <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
+                  {page.content}
+                </pre>
+              </CardContent>
 
-            <Divider sx={{ margin: '1.5rem 0' }} />
+              <Divider sx={{ margin: '0.25rem 0' }} />
 
-            <Box sx={{ padding: '1rem' }}>
-              <LabelCategoriesSection
-                labelCategories={labelCategories}
-                annotationType={annotationType}
-                annotations={annotations.map((a) => ({ ...a, bookId }))}
-                bookId={bookId}
-                handleAnnotationClick={onAnnotationClick}
-                isStateActive={isStateActive}
-                openLabelModal={openLabelModal}
-                setOpenLabelModal={setOpenLabelModal}
-                selectedCategory={selectedCategory}
-                setSelectedCategory={setSelectedCategory}
-                newLabel={newLabel}
-                onLabelChange={onLabelChange}
-                persistLabel={persistLabel}
-                onPersistChange={onPersistChange}
-                onAddLabel={onAddLabel}
-                temporaryLabels={temporaryLabels}
-              />
-            </Box>
-          </Card>
+              <Box sx={{ padding: '1rem' }}>
+                <LabelCategoriesSection
+                  labelCategories={labelCategories}
+                  annotationType={annotationType}
+                  annotations={pageAnnotations}
+                  bookId={bookId}
+                  pageId={page.fileName}
+                  handleAnnotationClick={onAnnotationClick}
+                  isStateActive={isStateActive}
+                  openLabelModal={openLabelModal}
+                  setOpenLabelModal={setOpenLabelModal}
+                  selectedCategory={selectedCategory}
+                  setSelectedCategory={setSelectedCategory}
+                  newLabel={newLabel}
+                  onLabelChange={onLabelChange}
+                  persistLabel={persistLabel}
+                  onPersistChange={onPersistChange}
+                  onAddLabel={onAddLabel}
+                  temporaryLabels={temporaryLabels}
+                />
+              </Box>
+            </Card>
 
-          {index % 2 !== 0 && <Divider sx={{ marginBottom: '2rem' }} />}
-        </React.Fragment>
-      ))}
+            {index % 2 !== 0 && <Divider sx={{ marginBottom: '2rem' }} />}
+          </React.Fragment>
+        );
+      })}
     </>
   );
 };

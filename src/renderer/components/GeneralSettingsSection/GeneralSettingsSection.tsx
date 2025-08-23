@@ -224,10 +224,10 @@ const GeneralSettingsSection: React.FC<GeneralSettingsSectionProps> = ({
       </Box>
 
       {/* 5. Number of Items per Page */}
-      <Box mb={3}>
+      {/* <Box mb={3}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-            5. {annotationType === 'poetry' ? 'Poems' : 'Pages'} per Application
+            5. {annotationType === 'poetry' ? 'Poems' : 'Book Pages'} per Application
             Page
           </Typography>
           <Tooltip title="Specify how many items should appear at a time. Must be greater than 0.">
@@ -246,7 +246,7 @@ const GeneralSettingsSection: React.FC<GeneralSettingsSectionProps> = ({
           margin="normal"
         />
         <Divider sx={{ width: '100%', mx: 'auto', my: 2 }} />
-      </Box>
+      </Box> */}
     </>
   );
 };

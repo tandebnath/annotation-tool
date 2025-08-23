@@ -21,7 +21,9 @@ import {
 
 interface LabelCategorySectionProps {
   labelCategories: { name: string; labels: string[] }[];
-  setLabelCategories: (categories: { name: string; labels: string[] }[]) => void;
+  setLabelCategories: (
+    categories: { name: string; labels: string[] }[],
+  ) => void;
   newCategory: string;
   setNewCategory: (val: string) => void;
   selectedCategory: string;
@@ -29,9 +31,12 @@ interface LabelCategorySectionProps {
   newLabel: string;
   setNewLabel: (val: string) => void;
   isBatchMode: boolean;
-  setIsBatchMode: React.Dispatch<React.SetStateAction<boolean>>
+  setIsBatchMode: React.Dispatch<React.SetStateAction<boolean>>;
   allowMultipleLabels: boolean;
   setAllowMultipleLabels: (val: boolean) => void;
+  markAllAsLabel: string;
+  setMarkAllAsLabel: (val: string) => void;
+  annotationType: 'poetry' | 'prose';
 }
 
 const LabelCategorySection: React.FC<LabelCategorySectionProps> = ({
@@ -47,12 +52,15 @@ const LabelCategorySection: React.FC<LabelCategorySectionProps> = ({
   setIsBatchMode,
   allowMultipleLabels,
   setAllowMultipleLabels,
+  markAllAsLabel,
+  setMarkAllAsLabel,
+  annotationType,
 }) => {
   return (
     <Box mb={4}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
         <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-          6. Label Categories
+          5. Label Categories
         </Typography>
         <Tooltip title="Group your labels into categories for better organization.">
           <HelpOutlineIcon sx={{ fontSize: '1.1rem', color: 'gray' }} />
@@ -70,7 +78,12 @@ const LabelCategorySection: React.FC<LabelCategorySectionProps> = ({
         />
         <Button
           onClick={() =>
-            handleAddCategory(newCategory, labelCategories, setLabelCategories, setNewCategory)
+            handleAddCategory(
+              newCategory,
+              labelCategories,
+              setLabelCategories,
+              setNewCategory,
+            )
           }
           variant="contained"
           sx={{
@@ -100,7 +113,14 @@ const LabelCategorySection: React.FC<LabelCategorySectionProps> = ({
           }}
         >
           {/* Header with Delete */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              mb: 1,
+            }}
+          >
             <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
               {category.name}
             </Typography>
@@ -112,7 +132,7 @@ const LabelCategorySection: React.FC<LabelCategorySectionProps> = ({
                   labelCategories,
                   setLabelCategories,
                   setSelectedCategory,
-                  selectedCategory
+                  selectedCategory,
                 )
               }
             >
@@ -127,7 +147,12 @@ const LabelCategorySection: React.FC<LabelCategorySectionProps> = ({
                 key={index}
                 label={label}
                 onDelete={() =>
-                  handleDeleteLabel(category.name, label, labelCategories, setLabelCategories)
+                  handleDeleteLabel(
+                    category.name,
+                    label,
+                    labelCategories,
+                    setLabelCategories,
+                  )
                 }
                 sx={{
                   backgroundColor: 'var(--secondary-main)',
@@ -164,7 +189,7 @@ const LabelCategorySection: React.FC<LabelCategorySectionProps> = ({
                   labelCategories,
                   isBatchMode,
                   setLabelCategories,
-                  setNewLabel
+                  setNewLabel,
                 )
               }
               variant="contained"
@@ -198,7 +223,9 @@ const LabelCategorySection: React.FC<LabelCategorySectionProps> = ({
                 '&:hover': { textDecoration: 'underline' },
               }}
             >
-              {isBatchMode ? 'Switch to single label mode' : 'Switch to batch label mode'}
+              {isBatchMode
+                ? 'Switch to single label mode'
+                : 'Switch to batch label mode'}
             </Button>
             <Tooltip
               title={
@@ -225,6 +252,31 @@ const LabelCategorySection: React.FC<LabelCategorySectionProps> = ({
           label="Allow selection of multiple labels in a category?"
         />
       </Box>
+
+      {annotationType !== 'poetry' && (
+        <Box sx={{ pl: 1.5, mt: 2 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+            Set label for "Mark all as" Button
+          </Typography>
+          <TextField
+            select
+            size="small"
+            fullWidth
+            SelectProps={{ native: true }}
+            value={markAllAsLabel}
+            onChange={(e) => setMarkAllAsLabel(e.target.value)}
+          >
+            <option value="">-- Select a label --</option>
+            {labelCategories
+              .flatMap((cat) => cat.labels)
+              .map((label, idx) => (
+                <option key={idx} value={label}>
+                  {label}
+                </option>
+              ))}
+          </TextField>
+        </Box>
+      )}
     </Box>
   );
 };

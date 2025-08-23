@@ -45,8 +45,8 @@ const BookDetails: React.FC = () => {
   const [pages, setPages] = useState<Page[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [pagesPerAppPage, setPagesPerAppPage] = useState(1);
-  const [defaultLabel, setDefaultLabel] = useState('');
+  const [itemsPerPage, setItemsPerPage] = useState(1);
+  const [markAllAsLabel, setMarkAllAsLabel] = useState('');
 
   const [settings, setSettings] = useState<any>({});
 
@@ -96,8 +96,8 @@ const BookDetails: React.FC = () => {
       setStates(settings.labels || []);
     }
 
-    setPagesPerAppPage(parseInt(settings.pagesPerAppPage, 10) || 1);
-    setDefaultLabel(settings.defaultLabel || '');
+    setItemsPerPage(parseInt(settings.itemsPerPage, 10) || 1);
+    setMarkAllAsLabel(settings.markAllAsLabel || '');
   };
 
   useEffect(() => {
@@ -156,7 +156,7 @@ const BookDetails: React.FC = () => {
     if (annotationType) {
       calculateBookCompletion();
     }
-  }, [annotationType, pages, annotations, pagesPerAppPage]);
+  }, [annotationType, pages, annotations, itemsPerPage]);
 
   const loadBookDetails = async () => {
     const loadedPages = await window.electron.ipcRenderer.invoke(
@@ -179,10 +179,12 @@ const BookDetails: React.FC = () => {
     }
 
     // Adjust pagination based on booksPerPage
-    const booksPerPage = parseInt(settingsData.booksPerPage, 10) || 1;
-    const totalBookPages = Math.ceil(loadedPages.length / booksPerPage);
+    const itemsPerPage = parseInt(settingsData.itemsPerPage, 10) || 1;
+    const totalBookPages = Math.ceil(loadedPages.length / itemsPerPage);
     setTotalPages(totalBookPages); // Set total pages based on the number of book pages divided by booksPerPage
   };
+
+  
 
   const calculateBookCompletion = () => {
     if (!annotationType) return;
@@ -232,8 +234,8 @@ const BookDetails: React.FC = () => {
   };
 
   const paginatePages = (page: number) => {
-    const startIndex = (page - 1) * pagesPerAppPage;
-    const endIndex = startIndex + pagesPerAppPage;
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
     return pages.slice(startIndex, endIndex);
   };
 
@@ -397,8 +399,9 @@ const BookDetails: React.FC = () => {
   };
 
   const handleMarkAllAs = async () => {
-    if (!defaultLabel || !selectedCategory) {
-      alert('Please select a default label and category.');
+
+    if (!markAllAsLabel || !selectedCategory) {
+      alert('Please select a "Mark all as" label and category.');
       return;
     }
 
@@ -407,10 +410,11 @@ const BookDetails: React.FC = () => {
         !annotations.some((annotation) => annotation.page === page.fileName),
     );
 
+
     const newAnnotations = unannotatedPages.map((page) => ({
       bookId,
       page: page.fileName,
-      state: defaultLabel,
+      state: markAllAsLabel,
       category: selectedCategory,
     }));
 
@@ -423,6 +427,10 @@ const BookDetails: React.FC = () => {
         type: annotationType,
       });
     }
+    alert(
+      `Marked ${newAnnotations.length} unannotated pages as "${markAllAsLabel}" in category "${selectedCategory}".`,
+    );
+
   };
 
   const handleJumpToUnannotated = () => {
@@ -432,7 +440,7 @@ const BookDetails: React.FC = () => {
     );
 
     if (firstUnannotatedPage !== -1) {
-      const newPage = Math.ceil((firstUnannotatedPage + 1) / pagesPerAppPage);
+      const newPage = Math.ceil((firstUnannotatedPage + 1) / itemsPerPage);
       setCurrentPage(newPage);
     }
   };
@@ -603,7 +611,7 @@ const visiblePages =
               toPage={toPage}
               rangeState={rangeState}
               states={states}
-              defaultLabel={defaultLabel}
+              markAllAsLabel={markAllAsLabel}
               bookCompletion={bookCompletion}
               onRangeChange={handleRangeChange}
               onRangeSubmit={handleRangeSubmit}

@@ -20,6 +20,7 @@ const AnnotationSettings: React.FC = () => {
     { name: string; labels: string[] }[]
   >([]);
   const [allowMultipleLabels, setAllowMultipleLabels] = useState(true);
+  const [markAllAsLabel, setMarkAllAsLabel] = useState('');
   const [newCategory, setNewCategory] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [newLabel, setNewLabel] = useState('');
@@ -70,6 +71,7 @@ const AnnotationSettings: React.FC = () => {
           setCsvColumns(settings.csvColumns || []);
           setVolumeIdColumn(settings.volumeIdColumn || '');
           setMetadataFields(settings.metadataFields || []);
+          setMarkAllAsLabel(settings.markAllAsLabel || '');
         }
       });
   }, [annotationType, navigate]);
@@ -107,6 +109,7 @@ const AnnotationSettings: React.FC = () => {
       csvColumns,
       volumeIdColumn,
       metadataFields,
+      markAllAsLabel
     };
 
     await window.electron.ipcRenderer.invoke('settings:save', {
@@ -154,6 +157,9 @@ const AnnotationSettings: React.FC = () => {
         setNewLabel={setNewLabel}
         isBatchMode={isBatchMode}
         setIsBatchMode={setIsBatchMode}
+        markAllAsLabel={markAllAsLabel}
+        setMarkAllAsLabel={setMarkAllAsLabel}
+        annotationType={annotationType}
       />
 
       <MetadataSection

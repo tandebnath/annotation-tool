@@ -74,6 +74,7 @@ const BookList: React.FC = () => {
     const foldersWithCompletion = await window.electron.ipcRenderer.invoke(
       'getFoldersWithTxtFiles',
       booksDir,
+      annotationType
     );
 
     let metadataJson: any = {};
@@ -91,11 +92,11 @@ const BookList: React.FC = () => {
 
     setBooks(booksWithMetadata);
     setFilteredBooks(booksWithMetadata);
-    updatePagination(booksWithMetadata.length, settings.itemsPerPage);
+    updatePagination(booksWithMetadata.length, settings.volumesPerPage);
   };
 
-  const updatePagination = (totalBooks: number, itemsPerPage: string) => {
-    const perPage = parseInt(itemsPerPage, 10) || 10;
+  const updatePagination = (totalBooks: number, volumesPerPage: string) => {
+    const perPage = parseInt(volumesPerPage, 10) || 10;
     const pages = Math.ceil(totalBooks / perPage);
     setTotalPages(pages);
     if (currentPage > pages) {
@@ -123,13 +124,13 @@ const BookList: React.FC = () => {
     }
 
     setFilteredBooks(filtered);
-    updatePagination(filtered.length, settings.itemsPerPage);
+    updatePagination(filtered.length, settings.volumesPerPage);
   };
 
   const getPaginatedBooks = () => {
-    const itemsPerPage = parseInt(settings.itemsPerPage, 10) || 10;
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredBooks.slice(startIndex, startIndex + itemsPerPage);
+    const volumesPerPage = parseInt(settings.volumesPerPage, 10) || 10;
+    const startIndex = (currentPage - 1) * volumesPerPage;
+    return filteredBooks.slice(startIndex, startIndex + volumesPerPage);
   };
 
   const handleGoToPage = () => {

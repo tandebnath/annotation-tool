@@ -14,7 +14,7 @@ interface BatchAnnotationProps {
   toPage: string;
   rangeState: string;
   states: string[];
-  defaultLabel: string;
+  markAllAsLabel: string; 
   bookCompletion: number;
   onRangeChange: (key: 'from' | 'to' | 'label', value: string) => void;
   onRangeSubmit: (e: React.FormEvent) => void;
@@ -27,7 +27,7 @@ const BatchAnnotationSection: React.FC<BatchAnnotationProps> = ({
   toPage,
   rangeState,
   states,
-  defaultLabel,
+  markAllAsLabel,
   bookCompletion,
   onRangeChange,
   onRangeSubmit,
@@ -114,6 +114,7 @@ const BatchAnnotationSection: React.FC<BatchAnnotationProps> = ({
           color="secondary"
           size="small"
           onClick={onMarkAllAs}
+          disabled={!markAllAsLabel}
           sx={{
             backgroundColor: 'var(--secondary-main)',
             '&:hover': {
@@ -124,7 +125,7 @@ const BatchAnnotationSection: React.FC<BatchAnnotationProps> = ({
             },
           }}
         >
-          Mark all as {defaultLabel}
+          Mark all as {markAllAsLabel}
         </Button>
       </Box>
 

@@ -18,6 +18,7 @@ interface LabelCategoriesSectionProps {
     category: string;
   }[];
   bookId: string;
+  pageId?: string;
   handleAnnotationClick: (
     page: string,
     label: string,
@@ -43,6 +44,7 @@ const LabelCategoriesSection: React.FC<LabelCategoriesSectionProps> = ({
   labelCategories,
   annotations,
   bookId,
+  pageId,
   handleAnnotationClick,
   annotationType,
   isStateActive,
@@ -110,9 +112,9 @@ const LabelCategoriesSection: React.FC<LabelCategoriesSectionProps> = ({
                       variant="contained"
                       sx={{
                         backgroundColor: isStateActive(
-                          bookId,
+                          annotationType === 'poetry' ? 'poetry' : pageId || bookId,
                           label,
-                          category.name,
+                          category.name
                         )
                           ? 'var(--proceed-color)'
                           : 'var(--primary-color)',
@@ -125,9 +127,9 @@ const LabelCategoriesSection: React.FC<LabelCategoriesSectionProps> = ({
                       }}
                       onClick={() =>
                         handleAnnotationClick(
-                          annotationType === 'poetry' ? 'poetry' : bookId,
+                          annotationType === 'poetry' ? 'poetry' : pageId || bookId,
                           label,
-                          category.name,
+                          category.name
                         )
                       }
                       title={
